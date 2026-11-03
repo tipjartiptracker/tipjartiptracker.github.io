@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tip Jar</title>
+<meta name="description" content="Free tip tracker for servers and bartenders. Log shifts, see your real hourly rate, and compare with past years. Built by servers, for servers.">
+<meta name="theme-color" content="#1C3326">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tip Jar">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one-column app with a tab bar; Home is a single guest-check pad plus today's shifts */
+:root{
+  --bg:#F1F4EF; --surface:#FFFFFF; --soft:#E6ECE5; --ink:#17231C; --muted:#5A685F; --line:#D3DCD3;
+  --accent:#2C7A4E; --accent-ink:#FFFFFF; --card:#3B6CA6; --cash:#BF821A; --neg:#B23F2C;
+  --check-rule:#B9D3BF; --wage:#7357A8;
+  --mast-bg:#1C3326; --mast-fg:#EEF4EF; --mast-dim:#A9C0B0; --gold:#E8B65A;
+  --f-display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --f-body:"Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --f-num:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0F1612; --surface:#17211B; --soft:#1E2A23; --ink:#E4ECE6; --muted:#93A399; --line:#2A3830;
+  --accent:#5DBF86; --accent-ink:#0B170F; --card:#82AADB; --cash:#E2A84A; --neg:#E5806C; --check-rule:#2F4A38; --wage:#B49CE0; --mast-bg:#15261C; --mast-dim:#8FAA98; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0F1612; --surface:#17211B; --soft:#1E2A23; --ink:#E4ECE6; --muted:#93A399; --line:#2A3830;
+  --accent:#5DBF86; --accent-ink:#0B170F; --card:#82AADB; --cash:#E2A84A; --neg:#E5806C; --check-rule:#2F4A38; --wage:#B49CE0; --mast-bg:#15261C; --mast-dim:#8FAA98; color-scheme:dark }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;color-scheme:light}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+.wordmark{font-family:var(--f-display);font-weight:800;font-size:1.25rem;letter-spacing:-0.01em}
+.jar-mark{width:14px;height:17px;border:2px solid var(--accent);border-radius:3px 3px 5px 5px;position:relative;display:inline-block;align-self:center;background:linear-gradient(to top, var(--gold) 0 45%, transparent 45%)}
+.jar-mark::before{content:"";position:absolute;top:-5px;left:1px;right:1px;height:3px;background:var(--accent);border-radius:1px}
+.mast{background-color:var(--mast-bg);color:var(--mast-fg);border-radius:12px;padding:24px 22px 20px;background-image:repeating-linear-gradient(to bottom, transparent 0 31px, color-mix(in srgb, var(--mast-fg) 7%, transparent) 31px 32px)}
+.mast .label{color:var(--mast-dim)}
+.mast-title{font-size:clamp(1.9rem,5.5vw,3.1rem);font-weight:800;line-height:1.02;letter-spacing:-0.02em;margin-top:6px;max-width:15ch}
+.mast-title em{font-style:normal;color:var(--gold)}
+.mast-sub{margin:14px 0 0;display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center;color:var(--mast-dim)}
+.today-chip{background:color-mix(in srgb, var(--mast-fg) 13%, transparent);color:var(--mast-fg);padding:4px 11px;border-radius:999px;font-weight:600}
+.head-ctrls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.switch{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 5px;font-weight:600;font-size:.85rem}
+.switch .knob{width:32px;height:18px;border-radius:999px;background:var(--line);position:relative;flex:none}
+.switch .knob::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--surface);transition:left .15s}
+.switch[aria-checked="true"] .knob{background:var(--wage)}
+.switch[aria-checked="true"] .knob::after{left:16px}
+.past{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.past h3{font-size:1rem;font-weight:600}
+.past-mode{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:6px 8px;font-size:.85rem;max-width:100%}
+.prow{display:grid;grid-template-columns:3.4rem minmax(0,1fr) auto;gap:2px 12px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line)}
+.prow:last-child{border-bottom:0}
+.prow .py{font-family:var(--f-num);font-weight:500}
+.prow .pd{font-weight:500}
+.prow .pd small{display:block;font-weight:400;color:var(--muted);font-size:.8rem}
+.prow .pa{text-align:right;font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.prow .pa small{display:block;font-size:.78rem}
+.prow.off .pa{color:var(--muted);font-family:var(--f-body);font-size:.88rem}
+.home-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;border-top:1px solid var(--line);padding-top:16px}
+.home-foot p{margin:0;color:var(--muted);font-size:.85rem}
+.set-btn{display:inline-flex;align-items:center;gap:8px}
+.settings{display:grid;gap:20px;max-width:720px}
+.set-text{margin:0 0 12px;color:var(--muted);max-width:62ch}
+.set-actions{display:flex;flex-wrap:wrap;gap:8px}
+.btn.solid{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+label.btn{display:inline-flex;align-items:center;cursor:pointer}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.set-area{display:block;width:100%;min-height:110px;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:8px;font-family:var(--f-num);font-size:.78rem;margin:10px 0 8px;resize:vertical}
+.paste{margin-top:14px}
+.paste summary{cursor:pointer;color:var(--accent);font-weight:600}
+.preview{margin-top:14px;padding:12px 14px;background:var(--soft);border-radius:8px;display:grid;gap:8px}
+.preview p{margin:0}
+.set-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.set-row:last-child{border-bottom:0}
+.set-name{font-weight:600}
+.set-desc{font-size:.85rem;color:var(--muted)}
+.switch.plain[aria-checked="true"] .knob{background:var(--accent)}
+.danger-zone{border-color:color-mix(in srgb, var(--neg) 45%, var(--line))}
+.danger-zone h2{color:var(--neg)}
+.btn.danger-btn{color:var(--neg);border-color:color-mix(in srgb, var(--neg) 50%, var(--line))}
+.btn.danger-btn.fill{background:var(--neg);color:var(--surface);border-color:var(--neg)}
+.del-box{margin-top:4px;padding:14px;border:1px dashed var(--neg);border-radius:8px;display:grid;gap:10px;justify-items:start}
+.del-box p{margin:0}
+.del-code{font-family:var(--f-num);font-size:1.3rem;letter-spacing:.2em;font-weight:500;background:var(--soft);padding:2px 10px;border-radius:6px;user-select:none;-webkit-user-select:none}
+.del-box input{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:8px 10px;font-family:var(--f-num);letter-spacing:.2em;text-transform:uppercase;width:9em}
+.set-sub{margin-top:14px;font-weight:600;font-size:.9rem}
+.set-sub span{display:block;font-weight:400;color:var(--muted);font-size:.82rem}
+.top-line{border-top:1px solid var(--line);margin-top:14px;border-bottom:0}
+.set-select{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:7px 8px;max-width:11em}
+.unit-in{display:flex;align-items:center;gap:6px;font-family:var(--f-num);flex:none}
+.unit-in input{width:6.5em;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:7px 9px;text-align:right;font-family:var(--f-num)}
+.remind{justify-content:space-between}
+.goals{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px}
+.goal{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:0}
+.goal-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.goal-top .num{font-size:1.05rem}
+.goal-top .muted{font-size:.85rem}
+.bar{height:8px;background:var(--soft);border-radius:999px;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.goal.met .bar i{background:var(--gold)}
+.goal .s{font-size:.8rem;color:var(--muted);margin-top:6px}
+.brand-logo{width:28px;height:28px;flex:none;align-self:center}
+.brand{align-items:center}
+.mast{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.mast-text{min-width:0}
+.mast-logo{width:136px;height:136px;flex:none}
+@media (max-width:560px){ .mast{align-items:flex-start} .mast-logo{width:80px;height:80px} }
+.jar-logo{width:112px;height:112px;display:block;margin-bottom:12px}
+.warn{color:var(--ink)}
+.warn strong{color:var(--neg)}
+.set-label{font-weight:600;font-size:.9rem;margin-bottom:6px}
+.daypick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.daypick button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-weight:600;font-size:.85rem;min-width:3.2em}
+.daypick button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
+a.btn.solid{color:var(--accent-ink)}
+.about-list{display:grid;border-top:1px solid var(--line);margin-bottom:6px}
+.about-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 2px;border:0;border-bottom:1px solid var(--line);background:none;color:inherit;text-decoration:none;font-weight:600;text-align:left;width:100%;flex-wrap:wrap}
+.about-row small{display:block;font-weight:400;color:var(--muted);font-family:var(--f-num);font-size:.82rem}
+.install{display:grid;gap:8px;margin-top:10px}
+.install p{margin:0;max-width:62ch}
+.small{font-size:.75rem}
+.rate{justify-content:space-between;border-color:var(--accent);background:color-mix(in srgb, var(--accent) 8%, var(--surface))}
+.welcome{position:fixed;inset:0;z-index:30;background:color-mix(in srgb, var(--mast-bg) 92%, transparent);display:flex;align-items:center;justify-content:center;padding:max(16px, env(safe-area-inset-top,0px)) max(16px, env(safe-area-inset-right,0px)) max(16px, env(safe-area-inset-bottom,0px)) max(16px, env(safe-area-inset-left,0px));overflow:auto}
+.w-card{background:var(--surface);color:var(--ink);border-radius:16px;max-width:440px;width:100%;padding:24px 22px 18px;display:grid;gap:14px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.w-step{display:grid;gap:10px;justify-items:start}
+.w-step h2{font-size:1.6rem;font-weight:800}
+.w-step p{margin:0}
+.w-logo{width:104px;height:104px}
+.w-icon{color:var(--accent)}
+.w-warn{background:color-mix(in srgb, var(--cash) 12%, var(--surface));border:1px dashed var(--cash);border-radius:8px;padding:10px 12px}
+.w-form{width:100%}
+.w-dots{display:flex;gap:6px}
+.w-dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.w-dots i.on{background:var(--accent);width:22px;border-radius:999px}
+.w-nav{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:6px;border-top:1px solid var(--line)}
+a.btn.is-off{opacity:.5;pointer-events:none}
+.explain p{margin:0;color:var(--muted);font-size:.9rem;max-width:60ch}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1100px;margin:0 auto;padding-block:18px 48px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-0.01em}
+h1{font-size:1.5rem;font-weight:800}
+h2{font-size:1.15rem;font-weight:600}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.label{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.muted{color:var(--muted)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* App bar + tabs */
+.appbar{position:sticky;top:env(safe-area-inset-top, 0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.appbar-in{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:8px 20px;flex-wrap:wrap;padding-block:10px 0;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.brand{display:flex;align-items:baseline;gap:8px;padding-bottom:10px}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{border:0;background:none;padding:10px 14px 12px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs button:hover{color:var(--ink)}
+
+.view{display:grid;gap:20px}
+.view-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px}
+.view-head p{margin:2px 0 0;color:var(--muted)}
+.ranges{display:flex;flex-wrap:wrap;gap:4px;background:var(--soft);padding:4px;border-radius:10px}
+.ranges button{border:0;background:transparent;padding:6px 12px;border-radius:7px;font-weight:600;font-size:.85rem;color:var(--muted)}
+.ranges button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+.banner{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;border:1px dashed var(--cash);background:color-mix(in srgb, var(--cash) 10%, var(--surface));padding:10px 14px;border-radius:10px;font-size:.9rem}
+.banner strong{color:var(--cash)}
+
+/* Guest check */
+.check{background:var(--surface);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.check-head{background:var(--accent);color:var(--accent-ink);padding:10px 16px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.check-head h2{font-size:.95rem;letter-spacing:.14em;text-transform:uppercase}
+.check-head .num{font-size:.85rem;opacity:.9}
+.check form{padding:6px 16px 16px;display:grid}
+.row{display:grid;grid-template-columns:1fr 140px;align-items:center;gap:10px;border-bottom:1px solid var(--check-rule);padding:9px 0}
+.row label{font-weight:500}
+.row label small{display:block;color:var(--muted);font-size:.75rem;font-weight:400}
+.row input,.row select{width:100%;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:7px 9px;text-align:right;font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.row select{text-align:left;font-family:var(--f-body)}
+.row input[type=date]{text-align:left;font-size:.85rem;padding:6px}
+.hm{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:4px;align-items:center;font-family:var(--f-num);font-weight:600}
+.cal-nav{flex-wrap:wrap}
+.cal-nav select{height:36px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:0 8px;font-weight:600}
+.tally{margin-top:12px;display:grid;gap:4px;font-size:.9rem}
+.tally div{display:flex;justify-content:space-between}
+.tally .grand{border-top:2px solid var(--ink);padding-top:6px;margin-top:4px;font-weight:600;font-size:1rem}
+.form-note{min-height:1.4em;font-size:.82rem;color:var(--muted);margin:8px 0 0}
+.form-actions{display:flex;gap:8px;margin-top:10px}
+.btn{border:1px solid var(--line);background:var(--surface);padding:9px 14px;border-radius:8px;font-weight:600}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);flex:1}
+.btn:disabled{opacity:.6;cursor:default}
+
+/* Home */
+.home{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:820px){.home{grid-template-columns:minmax(0,1fr)}}
+.today-title{font-size:2rem;font-weight:800;line-height:1.1}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.panel-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 12px;margin-bottom:10px}
+.panel-head p{margin:0;font-size:.85rem;color:var(--muted)}
+
+.daylist{display:grid;gap:0}
+.shift{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.shift:first-child{padding-top:0}
+.shift .name{font-weight:600}
+.shift .meta{font-size:.82rem;color:var(--muted);grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 14px}
+.shift .net{font-family:var(--f-num);font-size:1.15rem;text-align:right}
+.shift .acts{grid-column:1/-1;display:flex;gap:4px;margin-left:-4px}
+.shift .snote{grid-column:1/-1;font-size:.88rem;background:var(--soft);border-radius:6px;padding:6px 10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.note-row{grid-template-columns:1fr}
+.note-row textarea{width:100%;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:7px 9px;resize:vertical;min-height:58px;font:inherit}
+.ndot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cash);margin-left:4px;vertical-align:2px}
+td.hnote{max-width:220px;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.prow .pd small.pnote{font-style:italic;color:var(--ink);opacity:.8;overflow-wrap:anywhere;white-space:normal}
+.daytotal{display:flex;justify-content:space-between;align-items:baseline;padding-top:12px;font-weight:600}
+.daytotal .num{font-size:1.3rem}
+.link{border:0;background:none;color:var(--accent);font-weight:600;padding:2px 4px}
+.link.danger{color:var(--neg)}
+.empty{color:var(--muted);font-size:.9rem;padding:8px 0}
+
+/* Tiles */
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:700px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:0}
+.tile .v{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:1.4rem;font-weight:500;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .s{font-size:.8rem;color:var(--muted)}
+.chart-box{position:relative;height:280px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+@media (max-width:900px){.two{grid-template-columns:minmax(0,1fr)}}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.8rem;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+/* Calendar */
+.cal-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,360px);gap:20px;align-items:start}
+@media (max-width:900px){.cal-layout{grid-template-columns:minmax(0,1fr)}}
+.cal-nav{display:flex;align-items:center;gap:8px}
+.cal-nav button{border:1px solid var(--line);background:var(--surface);border-radius:8px;width:36px;height:36px;font-weight:600}
+.cal-nav .btn{width:auto;height:36px;padding:0 12px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal .dow{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center;font-weight:600;padding-bottom:4px}
+.day{border:1px solid var(--line);background:var(--surface);border-radius:6px;min-height:70px;padding:6px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.day .d{font-size:.8rem;font-weight:600}
+.day .amt{font-family:var(--f-num);font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.day.out{visibility:hidden}
+.day.worked{background:color-mix(in srgb, var(--accent) calc(var(--heat) * 1%), var(--surface))}
+.day.today .d{color:var(--accent)}
+.day.today{border-color:var(--accent)}
+.day[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:-1px}
+@media (max-width:520px){.day{min-height:52px;padding:4px}.day .amt{font-size:.66rem}}
+.cal-foot{display:flex;flex-wrap:wrap;gap:6px 20px;margin-top:12px;font-size:.88rem;color:var(--muted)}
+.cal-foot strong{color:var(--ink);font-family:var(--f-num)}
+.side{display:grid;gap:16px}
+
+/* Compare + tables */
+.cmp-pick select{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:6px 8px;max-width:100%}
+.cmp-hero{display:flex;flex-wrap:wrap;gap:8px 28px;margin:4px 0 14px;padding:12px 14px;background:var(--soft);border-radius:8px}
+.cmp-hero .v{font-family:var(--f-num);font-size:1.15rem}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.r,th.r{text-align:right}
+td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.up{color:var(--accent)} .down{color:var(--neg)}
+.hist{max-height:460px;overflow:auto}
+.hist thead th{position:sticky;top:0;background:var(--surface)}
+
+/* Donate */
+.donate{max-width:640px;display:grid;gap:16px}
+.jar{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px}
+.jar h2{font-size:1.6rem;font-weight:800}
+.jar p{margin:8px 0 0;max-width:60ch}
+.ways{display:grid;gap:10px}
+.way{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--surface)}
+.way .h{font-family:var(--f-num);font-size:1.05rem;word-break:break-all}
+.way .acts{display:flex;gap:8px;flex-wrap:wrap}
+.way a{color:var(--accent);font-weight:600;text-decoration:none}
+.way a:hover{text-decoration:underline}
+.ed{display:grid;gap:10px}
+.ed label{display:grid;gap:4px;font-weight:500}
+.ed input,.ed textarea{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:8px 10px;width:100%;min-width:0}
+.ed textarea{min-height:80px;resize:vertical}
+
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom, 0px) + 20px);transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;font-size:.9rem;z-index:20}
+.store-note{font-size:.8rem;color:var(--muted);margin-top:28px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<!-- Tip Jar logo artwork, drawn once and reused -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <clipPath id="tj-inside"><path d="M352 392 Q352 380 364 380 L660 380 Q672 380 672 392 L672 724 Q672 790 606 790 L418 790 Q352 790 352 724 Z"/></clipPath>
+    <g id="tj-jar">
+      <g clip-path="url(#tj-inside)">
+        <rect x="330" y="600" width="370" height="220" fill="#E8B65A"/>
+        <g fill="#E8B65A" stroke="#C9922F" stroke-width="10">
+          <circle cx="392" cy="604" r="48"/><circle cx="478" cy="590" r="48"/><circle cx="566" cy="598" r="48"/><circle cx="648" cy="608" r="48"/>
+          <circle cx="436" cy="548" r="46"/><circle cx="526" cy="540" r="46"/><circle cx="612" cy="552" r="46"/>
+        </g>
+        <g fill="none" stroke="#C9922F" stroke-width="8" opacity=".55">
+          <circle cx="420" cy="690" r="40"/><circle cx="520" cy="700" r="40"/><circle cx="616" cy="686" r="40"/><circle cx="470" cy="770" r="40"/><circle cx="570" cy="776" r="40"/>
+        </g>
+      </g>
+      <path d="M352 392 Q352 380 364 380 L660 380 Q672 380 672 392 L672 724 Q672 790 606 790 L418 790 Q352 790 352 724 Z" fill="none" stroke="#EEF4EF" stroke-width="30" stroke-linejoin="round"/>
+      <path d="M392 440 L392 600" stroke="#EEF4EF" stroke-width="14" stroke-linecap="round" opacity=".45"/>
+      <rect x="372" y="318" width="280" height="54" rx="14" fill="#5DBF86"/>
+      <rect x="462" y="338" width="100" height="14" rx="7" fill="#1C3326"/>
+      <g transform="translate(512 236) rotate(-14)">
+        <circle r="56" fill="#E8B65A" stroke="#C9922F" stroke-width="10"/>
+        <circle r="36" fill="none" stroke="#C9922F" stroke-width="6" opacity=".6"/>
+      </g>
+      <path d="M440 214 l-30 -8 M432 250 l-34 4 M584 196 l26 -16" stroke="#E8B65A" stroke-width="10" stroke-linecap="round" opacity=".7"/>
+    </g>
+    <symbol id="tj-icon" viewBox="0 0 1024 1024">
+      <circle cx="512" cy="512" r="512" fill="#1C3326"/>
+      <use href="#tj-jar" transform="translate(512 520) scale(1.12) translate(-512 -512)"/>
+    </symbol>
+    <symbol id="tj-logo" viewBox="0 0 1024 1024">
+      <circle cx="512" cy="512" r="512" fill="#1C3326"/>
+      <circle cx="512" cy="512" r="430" fill="#21402F"/>
+      <use href="#tj-jar" transform="translate(512 430) scale(0.74) translate(-512 -500)"/>
+      <text x="512" y="806" text-anchor="middle" font-family="'Bricolage Grotesque', 'Inter Display', 'Avenir Next', system-ui, sans-serif" font-weight="800" font-size="118" letter-spacing="6" fill="#EEF4EF">TIP <tspan fill="#E8B65A">JAR</tspan></text>
+    </symbol>
+  </defs>
+</svg>
+<div class="appbar">
+  <div class="appbar-in">
+    <div class="brand"><svg class="brand-logo" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false"><use href="#tj-icon"/></svg><span class="wordmark">Tip Jar</span></div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button type="button" role="tab" data-tab="home">Home</button>
+      <button type="button" role="tab" data-tab="calendar">Calendar</button>
+      <button type="button" role="tab" data-tab="paychecks">Paychecks</button>
+      <button type="button" role="tab" data-tab="stats">Stats</button>
+      <button type="button" role="tab" data-tab="graphs">Graphs</button>
+      <button type="button" role="tab" data-tab="donate">Tip the Jar</button>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+  <!-- HOME -->
+  <section class="view" id="view-home" role="tabpanel" aria-label="Home">
+    <header class="mast">
+      <div class="mast-text">
+        <div class="label">Tip Jar</div>
+        <h1 class="mast-title">Know what every shift is <em>worth.</em></h1>
+        <p class="mast-sub"><span class="today-chip" id="todayTitle"></span><span id="todayLine"></span></p>
+      </div>
+      <svg class="mast-logo" viewBox="0 0 1024 1024" role="img" aria-label="Tip Jar logo"><use href="#tj-logo"/></svg>
+    </header>
+    <div class="banner remind" id="remind" hidden>
+      <span id="remindText"></span>
+      <span class="set-actions"><button type="button" class="btn solid" id="remindNow">Back up now</button><button type="button" class="btn" id="remindLater">Remind me in 3 days</button></span>
+    </div>
+    <div class="banner rate" id="rateBox" hidden>
+      <span><strong>Enjoying Tip Jar?</strong> A quick rating helps other servers find it.</span>
+      <span class="set-actions"><a class="btn solid" id="rateNow" href="#" target="_blank" rel="noopener">Rate Tip Jar</a><button type="button" class="btn" id="rateLater">Not now</button><button type="button" class="btn" id="rateNever">Don't ask again</button></span>
+    </div>
+    <div class="goals" id="goals" hidden></div>
+    <div class="home">
+      <div id="homeForm"></div>
+      <section class="panel" aria-labelledby="todayListTitle">
+        <div class="panel-head"><h2 id="todayListTitle">Today's shifts</h2><p id="todayCount"></p></div>
+        <div id="todayList"></div>
+        <div class="past">
+          <div class="panel-head"><h3>This day in past years</h3><select id="pastMode" class="past-mode" aria-label="Compare by"><option value="weekday">Same weekday, closest date</option><option value="date">Same calendar date</option></select></div>
+          <div id="pastList"></div>
+        </div>
+      </section>
+    </div>
+    <div class="home-foot">
+      <p id="homeFootNote"></p>
+      <button type="button" class="btn set-btn" data-go="setup"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10 1.8v2.6M10 15.6v2.6M1.8 10h2.6M15.6 10h2.6M4.2 4.2l1.9 1.9M13.9 13.9l1.9 1.9M4.2 15.8l1.9-1.9M13.9 6.1l1.9-1.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Settings</button>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="view" id="view-setup" role="tabpanel" aria-label="Settings" hidden>
+    <div class="view-head">
+      <div><h2>Settings</h2><p>Everything in Tip Jar is saved on this device only.</p></div>
+      <button type="button" class="btn" data-go="home">Back to Home</button>
+    </div>
+    <div class="settings">
+      <section class="panel">
+        <div class="panel-head"><h2>Backup and restore</h2></div>
+        <p class="set-text" id="dataSummary"></p>
+        <p class="set-text">A backup is one file with all your shifts, paychecks and settings. Keep it somewhere safe, like Google Drive, iCloud, or an email to yourself. Restore it on a new phone to pick up where you left off.</p>
+        <p class="set-text warn"><strong>Important:</strong> Tip Jar keeps your data only on this phone. If you uninstall the app or clear its data, everything is erased, so keep a recent backup.</p>
+        <div class="set-actions">
+          <button type="button" class="btn solid" id="backupBtn">Save backup</button>
+          <label class="btn" for="restoreFile">Restore from backup file</label>
+          <input type="file" id="restoreFile" accept=".json,.txt,application/json,text/plain" class="vh">
+        </div>
+        <div id="backupFallback" hidden>
+          <textarea id="backupText" class="set-area" readonly aria-label="Backup text"></textarea>
+          <button type="button" class="btn" id="copyBackup">Copy backup text</button>
+        </div>
+        <details class="paste">
+          <summary>Restore from copied backup text</summary>
+          <textarea id="pasteText" class="set-area" placeholder="Paste your backup text here" aria-label="Backup text to restore"></textarea>
+          <button type="button" class="btn" id="pasteRestore">Check backup</button>
+        </details>
+        <div class="preview" id="restorePreview" hidden></div>
+        <p class="form-note" id="backupNote"></p>
+        <div class="set-row top-line"><div><label class="set-name" for="s-remind">Backup reminder</label><div class="set-desc">A note shows up on Home when it's time to back up</div></div>
+          <select id="s-remind" class="set-select"><option value="7">Every week</option><option value="14">Every 2 weeks</option><option value="30">Every month</option><option value="0">Never</option></select></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Shift check</h2><p>The check on Home and Calendar</p></div>
+        <div class="set-row"><div><label class="set-name" for="s-tippct">Automatic tipshare</label><div class="set-desc">Fills in tipshare as a percent of your sales. You can still change it on any shift. Leave blank to turn it off.</div></div>
+          <div class="unit-in"><input id="s-tippct" type="number" inputmode="decimal" step="0.1" min="0" max="100" placeholder="Off"><span>%</span></div></div>
+        <div class="set-sub">Fields on the check <span>Hidden fields count as $0. Time worked is always shown.</span></div>
+        <div id="fieldToggles"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Goals</h2><p>Shown on Home. Leave blank to turn off.</p></div>
+        <div class="set-row"><div><label class="set-name" for="s-gnight">Nightly goal</label><div class="set-desc">Take-home for the day</div></div>
+          <div class="unit-in"><span>$</span><input id="s-gnight" type="number" inputmode="decimal" step="1" min="0" placeholder="Off"></div></div>
+        <div class="set-row"><div><label class="set-name" for="s-gweek">Weekly goal</label><div class="set-desc">Take-home for the week</div></div>
+          <div class="unit-in"><span>$</span><input id="s-gweek" type="number" inputmode="decimal" step="1" min="0" placeholder="Off"></div></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Display</h2></div>
+        <div class="set-row"><div><label class="set-name" for="s-theme">Appearance</label><div class="set-desc">Light, dark, or match your device</div></div>
+          <select id="s-theme" class="set-select"><option value="system">Match device</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+        <div class="set-row"><div><label class="set-name" for="s-week">Week starts on</label><div class="set-desc">For the weekly goal and weekly charts</div></div>
+          <select id="s-week" class="set-select"><option value="0">Sunday</option><option value="1">Monday</option></select></div>
+        <div class="set-sub">Tabs <span>Hide tabs you don't use. Nothing is deleted.</span></div>
+        <div id="tabToggles"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Reminder to log tips</h2><p>Your calendar sends the reminder</p></div>
+        <p class="set-text">Pick the nights you work and a time. Tip Jar adds a repeating event to your phone's calendar, which reminds you to log your tips.</p>
+        <div class="set-label">Nights</div>
+        <div class="daypick" id="remDays"></div>
+        <div class="set-row"><div><label class="set-name" for="remTime">Time</label><div class="set-desc">Usually right after your shift ends</div></div>
+          <input id="remTime" type="time" class="set-select" value="23:00"></div>
+        <div class="set-actions">
+          <a class="btn solid" id="remGoogle" href="#" target="_blank" rel="noopener">Add to Google Calendar</a>
+          <button type="button" class="btn" id="remIcs">Add to Apple or other calendar</button>
+        </div>
+        <p class="form-note" id="remNote"></p>
+      </section>
+
+      <section class="panel" id="aboutPanel">
+        <div class="panel-head"><h2>About Tip Jar</h2><p id="aboutVersion"></p></div>
+        <p class="set-text">Tip Jar is a free tip tracker, built by servers, for servers. It has no accounts and no ads, and it never sends your data anywhere.</p>
+        <div class="about-list">
+          <a class="about-row" href="privacy.html" target="_blank" rel="noopener"><span>Privacy policy</span><span aria-hidden="true">›</span></a>
+          <div class="about-row" id="feedbackRow" hidden><span>Send feedback<small id="feedbackAddr"></small></span><span class="set-actions"><button type="button" class="btn" id="feedbackCopy">Copy</button><a class="btn" id="feedbackMail" href="#">Email</a></span></div>
+          <a class="about-row" id="rateRow" href="#" target="_blank" rel="noopener" hidden><span>Rate Tip Jar on Google Play</span><span aria-hidden="true">›</span></a>
+          <button type="button" class="about-row" id="replayWelcome"><span>Show the welcome screens again</span><span aria-hidden="true">›</span></button>
+        </div>
+        <details class="paste">
+          <summary>Install Tip Jar on your phone</summary>
+          <div class="install">
+            <p><strong>Android:</strong> Get it on Google Play, or open Tip Jar in Chrome, tap the <b>⋮</b> menu, then <b>Add to Home screen</b> (or <b>Install app</b>).</p>
+            <p><strong>iPhone:</strong> Open Tip Jar in Safari, tap the <b>Share</b> button, then <b>Add to Home Screen</b>. It opens full screen and works offline.</p>
+            <p class="muted">Each phone keeps its own data. To move to a new phone, save a backup here and restore it there.</p>
+          </div>
+        </details>
+        <details class="paste">
+          <summary>Credits and licenses</summary>
+          <div class="install">
+            <p>Charts by <b>Chart.js</b>, used under the MIT License. Copyright (c) 2014-2024 Chart.js Contributors.</p>
+            <p class="muted small">Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+            <p>Fonts: Bricolage Grotesque, Instrument Sans and IBM Plex Mono, used under the SIL Open Font License.</p>
+          </div>
+        </details>
+      </section>
+
+      <section class="panel danger-zone">
+        <div class="panel-head"><h2>Delete all data</h2></div>
+        <p class="set-text">Erase every shift, paycheck and setting on this device. This can't be undone, so download a backup first if you might want your data back.</p>
+        <button type="button" class="btn danger-btn" id="delStart">Delete all data…</button>
+        <div class="del-box" id="delConfirm" hidden></div>
+      </section>
+    </div>
+  </section>
+
+  <!-- GRAPHS -->
+  <section class="view" id="view-graphs" role="tabpanel" aria-label="Graphs" hidden>
+    <div class="view-head"><div><h2>Graphs</h2><p class="rangeLabel"></p></div><div class="head-ctrls"><div class="incl-slot"></div><div class="ranges" data-ranges></div></div></div>
+    <div class="banner sampleBanner"><span><strong>Sample shifts.</strong> Made-up numbers so you can see how the charts work. Log a real shift and they disappear.</span></div>
+    <section class="panel">
+      <div class="panel-head">
+        <h2 id="shiftChartTitle">Every day worked</h2>
+        <div class="legend"><span><i style="background:var(--card)"></i>Credit card</span><span><i style="background:var(--cash)"></i>Cash</span><span class="wageLegend" hidden><i style="background:var(--wage)"></i>Paycheck</span><span><i style="background:var(--ink);height:2px;vertical-align:3px"></i>Take-home per hour</span></div>
+      </div>
+      <div class="chart-box"><canvas id="shiftChart" role="img" aria-label="Tips per day chart"></canvas></div>
+    </section>
+    <div class="two">
+      <section class="panel">
+        <div class="panel-head"><h2>Best nights</h2><p>Average take-home by weekday</p></div>
+        <div class="chart-box"><canvas id="dowChart" role="img" aria-label="Average by weekday chart"></canvas></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Year over year</h2><p>Take-home by month, every year</p></div>
+        <div class="chart-box"><canvas id="yoyChart" role="img" aria-label="Year over year chart"></canvas></div>
+      </section>
+    </div>
+  </section>
+
+  <!-- CALENDAR -->
+  <section class="view" id="view-calendar" role="tabpanel" aria-label="Calendar" hidden>
+    <div class="view-head">
+      <div><h2 id="calTitle">Calendar</h2><p>Pick a day to add, fix or delete its shifts.</p></div>
+      <div class="cal-nav">
+        <button type="button" id="calPrev" aria-label="Previous month">‹</button>
+        <select id="calMonthSel" aria-label="Month"></select>
+        <select id="calYearSel" aria-label="Year"></select>
+        <button type="button" id="calNext" aria-label="Next month">›</button>
+        <button type="button" class="btn" id="calToday">Today</button>
+      </div>
+    </div>
+    <div class="cal-layout">
+      <section class="panel">
+        <div class="cal" id="calGrid"></div>
+        <div class="cal-foot" id="calFoot"></div>
+      </section>
+      <div class="side">
+        <section class="panel">
+          <div class="panel-head"><h2 id="calDayTitle">Day</h2><p id="calDayCount"></p></div>
+          <div id="calDayList"></div>
+        </section>
+        <div id="calForm"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="view" id="view-stats" role="tabpanel" aria-label="Stats" hidden>
+    <div class="view-head"><div><h2>Stats</h2><p class="rangeLabel"></p></div><div class="head-ctrls"><div class="incl-slot"></div><div class="ranges" data-ranges></div></div></div>
+    <div class="banner sampleBanner"><span><strong>Sample shifts.</strong> Made-up numbers so you can see how stats work. Log a real shift and they disappear.</span></div>
+    <section class="tiles" aria-label="Summary">
+      <div class="tile"><div class="label">Take-home</div><div class="v" id="k-net">—</div><div class="s" id="k-net-s"></div></div>
+      <div class="tile"><div class="label">Avg per day worked</div><div class="v" id="k-avg">—</div><div class="s" id="k-avg-s"></div></div>
+      <div class="tile"><div class="label">Avg per hour</div><div class="v" id="k-hr">—</div><div class="s" id="k-hr-s"></div></div>
+      <div class="tile"><div class="label">Tips % of sales</div><div class="v" id="k-pct">—</div><div class="s" id="k-pct-s"></div></div>
+      <div class="tile"><div class="label">All tips</div><div class="v" id="k-tips">—</div><div class="s" id="k-tips-s"></div></div>
+      <div class="tile"><div class="label">Sales</div><div class="v" id="k-sales">—</div><div class="s" id="k-sales-s"></div></div>
+      <div class="tile"><div class="label">Best day</div><div class="v" id="k-best">—</div><div class="s" id="k-best-s"></div></div>
+      <div class="tile"><div class="label">Best hourly</div><div class="v" id="k-besthr">—</div><div class="s" id="k-besthr-s"></div></div>
+    </section>
+
+    <section class="panel" aria-labelledby="cmpTitle">
+      <div class="panel-head">
+        <h2 id="cmpTitle">How did this day compare?</h2>
+        <div class="cmp-pick"><label class="label" for="cmpDate">Day </label><select id="cmpDate"></select></div>
+      </div>
+      <div id="cmpBody"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>By year</h2><p>All time</p></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Year</th><th class="r">Days</th><th class="r">Hours</th><th class="r">Sales</th><th class="r">Tips</th><th class="r">Tipshare</th><th class="r">Paychecks</th><th class="r">Take-home</th><th class="r">Per day</th><th class="r">Per hr</th><th class="r">Tip %</th></tr></thead>
+        <tbody id="yearBody"></tbody>
+      </table></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Shift history</h2><button type="button" class="link" id="exportBtn" hidden>Download CSV</button></div>
+      <div class="hist table-wrap"><table>
+        <thead><tr><th>Date</th><th>Shift</th><th class="r">Hours</th><th class="r">Sales</th><th class="r">Card</th><th class="r">Cash</th><th class="r">Tipshare</th><th class="r">Take-home</th><th class="r">Per hr</th><th class="r">Tip %</th><th>Notes</th><th></th></tr></thead>
+        <tbody id="histBody"></tbody>
+      </table></div>
+    </section>
+  </section>
+
+  <!-- PAYCHECKS -->
+  <section class="view" id="view-paychecks" role="tabpanel" aria-label="Paychecks" hidden>
+    <div class="view-head"><div><h2>Paychecks</h2><p>Optional. If your job also pays you a weekly or bi-weekly check, log it here.</p></div><div class="incl-slot"></div></div>
+    <div class="home">
+      <div class="check">
+        <div class="check-head"><h2>Paycheck</h2><span class="num" id="p-sub">New check</span></div>
+        <form id="p-form" novalidate>
+          <div class="row"><label for="p-pay">Pay date</label><input id="p-pay" type="date" required></div>
+          <div class="row"><label for="p-freq">How often</label><select id="p-freq"><option value="biweekly">Every 2 weeks</option><option value="weekly">Weekly</option></select></div>
+          <div class="row"><label for="p-start">Pay period start</label><input id="p-start" type="date"></div>
+          <div class="row"><label for="p-end">Pay period end<small>fills in from the start</small></label><input id="p-end" type="date"></div>
+          <div class="row"><label for="p-hh">Time on check<small>optional, hours : minutes</small></label><div class="hm"><input id="p-hh" type="number" inputmode="numeric" step="1" min="0" placeholder="0" aria-label="Hours"><span aria-hidden="true">:</span><input id="p-mm" type="number" inputmode="numeric" step="1" min="0" max="59" placeholder="00" aria-label="Minutes"></div></div>
+          <div class="row"><label for="p-gross">Gross pay<small>before taxes</small></label><input id="p-gross" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+          <div class="row"><label for="p-net">Net pay<small>what hit your account</small></label><input id="p-net" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+          <p class="form-note" id="p-note"></p>
+          <div class="form-actions">
+            <button type="submit" class="btn primary" id="p-save">Save paycheck</button>
+            <button type="button" class="btn" id="p-cancel">Clear</button>
+          </div>
+        </form>
+      </div>
+      <div class="side">
+        <section class="panel">
+          <div class="panel-head"><h2>Your checks</h2><p id="p-count"></p></div>
+          <div id="checkList"></div>
+        </section>
+        <section class="panel explain">
+          <div class="panel-head"><h2>How checks are counted</h2></div>
+          <p>With paychecks turned on, each check's net pay is split across the shifts in its pay period, based on hours worked. That adds your wages to take-home and your real hourly rate in Graphs and Stats. Tips % of sales stays tips only. A check with no shifts logged in its pay period counts on its pay date.</p>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- DONATE -->
+  <section class="view" id="view-donate" role="tabpanel" aria-label="Tip the Jar" hidden>
+    <div class="donate">
+      <div class="jar">
+        <svg class="jar-logo" viewBox="0 0 1024 1024" role="img" aria-label="Tip Jar logo"><use href="#tj-logo"/></svg>
+        <div class="label">Tip the Creator</div>
+        <h2 id="donHeading">Like Tip Jar?</h2>
+        <p id="donMsg">Tip Jar is free. If it helps you keep track of your money, you can leave a tip for the person who built it.</p>
+      </div>
+      <div class="ways" id="donWays"></div>
+    </div>
+  </section>
+
+  <p class="store-note" id="storeNote">Connecting to your saved shifts…</p>
+</div>
+<div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="wTitle1" hidden>
+  <div class="w-card">
+    <div class="w-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    <section class="w-step" data-step="1">
+      <svg class="w-logo" viewBox="0 0 1024 1024" role="img" aria-label="Tip Jar logo"><use href="#tj-logo"/></svg>
+      <h2 id="wTitle1">Welcome to Tip Jar</h2>
+      <p>Log each shift in seconds and see what you really make: take-home, hourly rate, your best nights, and how this year compares to last.</p>
+    </section>
+    <section class="w-step" data-step="2" hidden>
+      <div class="w-icon" aria-hidden="true"><svg viewBox="0 0 48 48" width="56" height="56"><rect x="12" y="4" width="24" height="40" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><path d="M19 24l4 4 7-8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h2>Your data stays on your phone</h2>
+      <p>Tip Jar has no accounts and sends nothing anywhere. Everything you enter is saved only on this phone.</p>
+      <p class="w-warn">That also means uninstalling Tip Jar or clearing its data erases your shifts. Save a backup from Settings now and then. Tip Jar will remind you.</p>
+    </section>
+    <section class="w-step" data-step="3" hidden>
+      <h2>Quick setup</h2>
+      <p class="muted">All optional. You can change these anytime in Settings.</p>
+      <div class="w-form">
+        <div class="set-row"><div><label class="set-name" for="w-tippct">Tipshare</label><div class="set-desc">If you tip out a set percent of sales</div></div><div class="unit-in"><input id="w-tippct" type="number" inputmode="decimal" step="0.1" min="0" max="100" placeholder="Off"><span>%</span></div></div>
+        <div class="set-row"><div><label class="set-name" for="w-gnight">Nightly goal</label><div class="set-desc">Take-home you're aiming for</div></div><div class="unit-in"><span>$</span><input id="w-gnight" type="number" inputmode="decimal" step="1" min="0" placeholder="Off"></div></div>
+        <div class="set-row"><div><label class="set-name" for="w-week">Week starts on</label></div><select id="w-week" class="set-select"><option value="0">Sunday</option><option value="1">Monday</option></select></div>
+      </div>
+    </section>
+    <div class="w-nav">
+      <button type="button" class="link" id="wSkip">Skip</button>
+      <span class="set-actions"><button type="button" class="btn" id="wBack" hidden>Back</button><button type="button" class="btn solid" id="wNext">Next</button></span>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+  // ---------- helpers ----------
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money = (n, d=2) => (n==null||!isFinite(n)) ? '—' : (n<0?'−$':'$') + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+  const signed = n => (n>=0?'+':'−') + '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const pct = n => (n==null||!isFinite(n)) ? '—' : (n*100).toFixed(1)+'%';
+  const num = v => { const x = parseFloat(v); return isFinite(x) ? x : 0; };
+  const pad = n => String(n).padStart(2,'0');
+  const iso = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  const parseD = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d); };
+  const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+  const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const DOWL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MONL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const nice = s => { const d = parseD(s); return DOW[d.getDay()]+' '+MON[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear(); };
+  const long = s => { const d = parseD(s); return DOWL[d.getDay()]+', '+MONL[d.getMonth()]+' '+d.getDate(); };
+  const short = s => { const d = parseD(s); return MON[d.getMonth()]+' '+d.getDate(); };
+  const today = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+  const todayIso = () => iso(today());
+  const hm = h => { const t = Math.round(num(h)*60); return Math.floor(t/60) + ':' + pad(t%60); };
+  const newId = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+
+  function enrich(s){
+    const cc=num(s.cc), cash=num(s.cash), tipshare=num(s.tipshare), hours=num(s.hours), sales=num(s.sales), wage=num(s.wage);
+    const total = cc+cash, net = total-tipshare+wage;
+    return { id:s.id, date:s.date, label:s.label||'', notes:typeof s.notes==='string' ? s.notes : '', cc, cash, tipshare, hours, sales, total, wage, net,
+      hourly: hours>0 ? net/hours : null, tipPct: sales>0 ? total/sales : null, n:1 };
+  }
+  // Combine all shifts on a date into one day
+  function byDay(shifts, wages){
+    const m = new Map();
+    const blank = date => ({ date, cc:0, cash:0, tipshare:0, hours:0, sales:0, wage:0, n:0 });
+    shifts.forEach(s=>{
+      const g = m.get(s.date) || blank(s.date);
+      g.cc+=s.cc; g.cash+=s.cash; g.tipshare+=s.tipshare; g.hours+=s.hours; g.sales+=s.sales; g.n++;
+      m.set(s.date, g);
+    });
+    if(wages) wages.forEach((w, date)=>{ const g = m.get(date) || blank(date); g.wage += w.wage; g.hours += w.hours; m.set(date, g); });
+    return [...m.values()].map(g=>{ const e = enrich(g); e.n = g.n; return e; }).sort((a,b)=>a.date<b.date?-1:1);
+  }
+  function summarize(list){
+    let net=0,total=0,share=0,hours=0,sales=0,tipsWithSales=0,cc=0,cash=0,wage=0;
+    list.forEach(s=>{ net+=s.net; wage+=(s.wage||0); total+=s.total; share+=s.tipshare; hours+=s.hours; cc+=s.cc; cash+=s.cash; if(s.sales>0){sales+=s.sales; tipsWithSales+=s.total;} });
+    const n=list.length;
+    return { n, net, total, share, hours, sales, cc, cash, wage,
+      avg: n? net/n : null, hourly: hours>0 ? net/hours : null, tipPct: sales>0 ? tipsWithSales/sales : null };
+  }
+
+  // ---------- sample data (page only, never saved) ----------
+  function makeSample(){
+    let seed = 20240101;
+    const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed>>>15, 1|seed); t = t + Math.imul(t ^ t>>>7, 61|t) ^ t; return ((t ^ t>>>14)>>>0)/4294967296; };
+    const out = []; const end = today();
+    const w8 = [1.05,0.7,0.75,0.85,1.0,1.35,1.45];
+    for(let d = new Date(2024,0,1); d <= end; d = addDays(d,1)){
+      const w = d.getDay();
+      if((w===1||w===2) && rnd()<0.8) continue;
+      if(rnd()<0.18) continue;
+      const growth = 1 + (d.getFullYear()-2024)*0.06;
+      const season = 1 + 0.12*Math.sin((d.getMonth()-3)/12*2*Math.PI);
+      const hours = +(4.5 + rnd()*3).toFixed(2);
+      const sales = +(hours*190*w8[w]*growth*season*(0.8+rnd()*0.4)).toFixed(2);
+      const tips = sales*(0.17+rnd()*0.05), cs = 0.12 + rnd()*0.18;
+      out.push({ id:'x'+out.length, date: iso(d), label:'Dinner', hours, sales, cc: +(tips*(1-cs)).toFixed(2), cash: +(tips*cs).toFixed(0), tipshare: +(sales*0.03).toFixed(2) });
+    }
+    return out;
+  }
+
+  // ---------- state ----------
+  let real = null;            // raw shifts [{id,...}]
+  let sample = null;
+  let range = '90';
+  try { range = localStorage.getItem('tipbook.range') || '90'; } catch(e){}
+  let tab = 'home';
+  let calMonth = (()=>{ const t = today(); return new Date(t.getFullYear(), t.getMonth(), 1); })();
+  let calSel = todayIso();
+  let cmpDate = null;
+  let pendingDelete = null;
+  const CFG = window.TIPJAR_CONFIG || {};
+  const TIPS = CFG.tips || {};
+  let store = null;
+  let prefs = { hidden:{} };  // which tabs are hidden
+  let checks = [];            // paychecks [{id, payDate, freq, start, end, hours, gross, net}]
+  let includeChecks = false;
+
+  const realShifts = () => (real||[]).map(enrich).sort((a,b)=> a.date===b.date ? String(a.id).localeCompare(String(b.id)) : (a.date<b.date?-1:1));
+  const usingSample = () => !(real && real.length);
+  const analysisShifts = () => { if(!usingSample()) return realShifts(); if(!sample) sample = makeSample(); return sample.map(enrich); };
+  const shiftsOn = date => realShifts().filter(s=>s.date===date);
+  const findShift = id => (real||[]).find(s=>s.id===id);
+
+  const checkAmt = c => num(c.net) > 0 ? num(c.net) : num(c.gross);
+  // Spread each paycheck over the days worked in its pay period, by hours worked
+  function wageMap(){
+    if(!includeChecks || usingSample() || !checks.length) return null;
+    const days = byDay(realShifts());
+    const m = new Map();
+    const add = (date, w, h) => { const g = m.get(date) || { wage:0, hours:0 }; g.wage += w; g.hours += h; m.set(date, g); };
+    checks.forEach(c=>{
+      const amt = checkAmt(c); if(!(amt>0) || !c.payDate) return;
+      const st = c.start || c.payDate, en = c.end || c.payDate;
+      const inP = days.filter(d=>d.date>=st && d.date<=en);
+      const hrs = inP.reduce((a,d)=>a+d.hours, 0);
+      if(inP.length && hrs>0) inP.forEach(d=>add(d.date, amt*d.hours/hrs, 0));
+      else if(inP.length) inP.forEach(d=>add(d.date, amt/inP.length, 0));
+      else add(c.payDate, amt, num(c.hours));
+    });
+    return m;
+  }
+
+  function rangeStart(){
+    const t = today();
+    if(range==='30') return iso(addDays(t,-29));
+    if(range==='90') return iso(addDays(t,-89));
+    if(range==='365') return iso(addDays(t,-364));
+    if(range==='ytd') return t.getFullYear()+'-01-01';
+    return null;
+  }
+  const rangeName = () => ({ '30':'Last 30 days','90':'Last 90 days','365':'Last 12 months','ytd':'This year','all':'All time' })[range];
+
+  // ---------- range controls (shared by Graphs + Stats) ----------
+  const RANGES = [['30','30 days'],['90','90 days'],['ytd','This year'],['365','12 months'],['all','All time']];
+  document.querySelectorAll('[data-ranges]').forEach(box=>{
+    box.setAttribute('role','group'); box.setAttribute('aria-label','Date range');
+    box.innerHTML = RANGES.map(([k,t])=>`<button type="button" data-range="${k}">${t}</button>`).join('');
+    box.addEventListener('click', e=>{ const b = e.target.closest('[data-range]'); if(!b) return; range = b.dataset.range; try{localStorage.setItem('tipbook.range',range);}catch(_){} render(); });
+  });
+
+  // ---------- shift form factory ----------
+  const LABELS = ['', 'Lunch', 'Dinner', 'Brunch', 'Double', 'Other'];
+  function ShiftForm(mountId, prefix, opts){
+    const mount = $(mountId);
+    const f = k => prefix + '-' + k;
+    mount.innerHTML = `<div class="check">
+      <div class="check-head"><h2>${opts.title}</h2><span class="num" id="${f('sub')}"></span></div>
+      <form id="${f('form')}" novalidate>
+        ${opts.dateField ? `<div class="row"><label for="${f('date')}">Date</label><input id="${f('date')}" type="date" required></div>` : ''}
+        <div class="row" data-field="label"><label for="${f('label')}">Shift<small>optional</small></label><select id="${f('label')}">${LABELS.map(l=>`<option value="${l}">${l||'—'}</option>`).join('')}</select></div>
+        <div class="row"><label for="${f('hh')}">Time worked<small>hours : minutes</small></label><div class="hm"><input id="${f('hh')}" type="number" inputmode="numeric" step="1" min="0" max="24" placeholder="0" aria-label="Hours"><span aria-hidden="true">:</span><input id="${f('mm')}" type="number" inputmode="numeric" step="1" min="0" max="59" placeholder="00" aria-label="Minutes"></div></div>
+        <div class="row" data-field="sales"><label for="${f('sales')}">Sales<small>your total sales</small></label><input id="${f('sales')}" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+        <div class="row" data-field="cc"><label for="${f('cc')}">Credit card tips</label><input id="${f('cc')}" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+        <div class="row" data-field="cash"><label for="${f('cash')}">Cash tips</label><input id="${f('cash')}" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+        <div class="row" data-field="tipshare"><label for="${f('tipshare')}">Tipshare<small data-sharehint>tipped out to support staff</small></label><input id="${f('tipshare')}" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+        <div class="row note-row" data-field="notes"><label for="${f('notes')}">Notes<small>optional</small></label><textarea id="${f('notes')}" rows="2" maxlength="500" placeholder="Big party on the patio, rainy night, new menu…"></textarea></div>
+        <div class="tally" aria-live="polite">
+          <div><span>All tips</span><span class="num" id="${f('t-total')}">$0.00</span></div>
+          <div data-field="tipshare"><span>Less tipshare</span><span class="num" id="${f('t-share')}">−$0.00</span></div>
+          <div class="grand"><span>Take-home</span><span class="num" id="${f('t-net')}">$0.00</span></div>
+          <div class="muted"><span>Per hour</span><span class="num" id="${f('t-hourly')}">—</span></div>
+          <div class="muted" data-field="sales"><span>Tips as % of sales</span><span class="num" id="${f('t-pct')}">—</span></div>
+        </div>
+        <p class="form-note" id="${f('note')}"></p>
+        <div class="form-actions">
+          <button type="submit" class="btn primary" id="${f('save')}">Save shift</button>
+          <button type="button" class="btn" id="${f('cancel')}">Clear</button>
+        </div>
+      </form></div>`;
+    const F = {}; ['date','label','hh','mm','sales','cc','cash','tipshare','notes'].forEach(k=>F[k]=$(f(k)));
+    const api = { editingId:null, fixedDate: opts.fixedDate || null };
+    const val = () => ({ date: F.date ? F.date.value : api.fixedDate(), label:F.label.value, hours:+(Math.floor(num(F.hh.value)) + Math.floor(num(F.mm.value))/60).toFixed(4), sales:num(F.sales.value), cc:num(F.cc.value), cash:num(F.cash.value), tipshare:num(F.tipshare.value), notes:F.notes.value.trim() });
+    function tally(){
+      const e = enrich(val());
+      $(f('t-total')).textContent = money(e.total); $(f('t-share')).textContent = '−'+money(e.tipshare);
+      $(f('t-net')).textContent = money(e.net); $(f('t-hourly')).textContent = money(e.hourly); $(f('t-pct')).textContent = pct(e.tipPct);
+    }
+    function mode(){
+      $(f('save')).textContent = api.editingId ? 'Update shift' : 'Save shift';
+      $(f('cancel')).textContent = api.editingId ? 'Cancel' : 'Clear';
+      $(f('sub')).textContent = api.editingId ? 'Editing' : 'New shift';
+    }
+    api.edit = s => {
+      api.editingId = s.id;
+      if(F.date) F.date.value = s.date;
+      F.label.value = LABELS.includes(s.label||'') ? (s.label||'') : 'Other';
+      ['sales','cc','cash','tipshare'].forEach(k=>{ F[k].value = (s[k]!=null && s[k]!=='') ? s[k] : ''; });
+      F.notes.value = s.notes || '';
+      const mins = Math.round(num(s.hours)*60);
+      F.hh.value = mins ? Math.floor(mins/60) : ''; F.mm.value = mins ? pad(mins%60) : '';
+      $(f('note')).textContent = 'Editing the ' + (s.label ? s.label.toLowerCase()+' ' : '') + 'shift from ' + short(s.date) + '.';
+      shareManual = true; tally(); mode(); F.hh.focus();
+    };
+    api.reset = date => {
+      api.editingId = null; shareManual = false;
+      if(F.date && date) F.date.value = date;
+      F.label.value = opts.defaultLabel ? opts.defaultLabel() : '';
+      ['hh','mm','sales','cc','cash','tipshare','notes'].forEach(k=>F[k].value='');
+      $(f('note')).textContent = ''; tally(); mode();
+    };
+    api.setDate = date => { if(F.date && !api.editingId) F.date.value = date; };
+    Object.values(F).forEach(el=>el && el.addEventListener('input', tally));
+    // Automatic tipshare: a percent of sales, until the person types their own amount
+    let shareManual = false;
+    F.tipshare.addEventListener('input', ()=>{ shareManual = F.tipshare.value !== ''; });
+    F.sales.addEventListener('input', ()=>{
+      const p = num(prefs.tipsharePct);
+      if(!(p>0) || shareManual) return;
+      const s = num(F.sales.value);
+      F.tipshare.value = s > 0 ? (Math.round(s*p)/100).toFixed(2) : '';
+      tally();
+    });
+    if(F.date) F.date.addEventListener('change', ()=>{ if(opts.onDate) opts.onDate(F.date.value); });
+    $(f('cancel')).addEventListener('click', ()=>api.reset(F.date ? F.date.value : null));
+    $(f('form')).addEventListener('submit', async ev=>{
+      ev.preventDefault();
+      const s = val(); const note = $(f('note'));
+      if(!s.date){ note.textContent='Pick the date of the shift.'; F.date && F.date.focus(); return; }
+      if(num(F.mm.value) >= 60){ note.textContent='Minutes go from 0 to 59. For 90 minutes, enter 1 hour 30 minutes.'; F.mm.focus(); return; }
+      if(!(s.hours>0)){ note.textContent='Enter how long you worked so the hourly rate is right.'; F.hh.focus(); return; }
+      if(!store){ note.textContent='Still connecting to your saved shifts. Try again in a moment.'; return; }
+      const id = api.editingId || newId(); const was = api.editingId;
+      $(f('save')).disabled = true;
+      try{
+        await store.save('shifts', id, { ...s, updatedAt: new Date().toISOString() });
+        toast(was ? 'Shift updated' : 'Shift saved');
+        api.reset(s.date); if(opts.onSaved) opts.onSaved(s.date);
+      }catch(e){
+        note.textContent = e && e.code==='quota_exceeded' ? 'Storage is full. Delete some old shifts, then save again.' : 'That shift did not save. Check your connection and try again.';
+      }finally{ $(f('save')).disabled = false; }
+    });
+    tally(); mode();
+    return api;
+  }
+
+  const homeForm = ShiftForm('homeForm','h',{ title:'Tonight\'s check', fixedDate: todayIso });
+  const calForm = ShiftForm('calForm','c',{ title:'Shift check', dateField:true,
+    onDate: d => { calSel = d; const x = parseD(d); calMonth = new Date(x.getFullYear(), x.getMonth(), 1); render(); },
+    onSaved: d => { calSel = d; } });
+  homeForm.reset(); calForm.reset(calSel);
+
+  // ---------- day list (Home + Calendar) ----------
+  function dayList(mountId, date, form){
+    const list = shiftsOn(date);
+    const mount = $(mountId);
+    if(!list.length){ mount.innerHTML = `<p class="empty">No shifts logged ${date===todayIso()?'yet today':'on this day'}. Fill in the check to add one.</p>`; return list; }
+    const day = summarize(list);
+    mount.innerHTML = '<div class="daylist">' + list.map((s,i)=>`<div class="shift">
+        <div class="name">${esc(s.label || ('Shift '+(i+1)))}</div><div class="net">${money(s.net)}</div>
+        <div class="meta"><span>${hm(s.hours)} worked</span><span>${money(s.hourly)}/hr</span><span>Card ${money(s.cc)}</span><span>Cash ${money(s.cash)}</span><span>Tipshare ${money(s.tipshare)}</span>${s.sales?`<span>Sales ${money(s.sales)} · ${pct(s.tipPct)}</span>`:''}</div>
+        ${s.notes?`<div class="snote">${esc(s.notes)}</div>`:''}
+        <div class="acts"><button type="button" class="link" data-edit="${esc(s.id)}">Edit</button><button type="button" class="link danger" data-del="${esc(s.id)}">${pendingDelete===s.id?'Tap again to delete':'Delete'}</button></div>
+      </div>`).join('') + '</div>' +
+      `<div class="daytotal"><span>${list.length>1?'Day total':'Take-home'} · <span class="muted">${hm(day.hours)} worked · ${money(day.hourly)}/hr</span></span><span class="num">${money(day.net)}</span></div>`;
+    return list;
+  }
+  async function handleListClick(ev, form){
+    const ed = ev.target.closest('[data-edit]'), del = ev.target.closest('[data-del]');
+    if(ed){ const s = findShift(ed.dataset.edit); if(s) form.edit(s); }
+    if(del){
+      const id = del.dataset.del;
+      if(pendingDelete!==id){ pendingDelete=id; render(); return; }
+      pendingDelete=null;
+      try{ await store.remove('shifts', id); if(form.editingId===id) form.reset(); toast('Shift deleted'); }catch(e){ toast('That shift was not deleted. Try again.'); render(); }
+    }
+  }
+  $('todayList').addEventListener('click', e=>handleListClick(e, homeForm));
+  $('calDayList').addEventListener('click', e=>handleListClick(e, calForm));
+
+  // ---------- tabs ----------
+  const TABS = ['home','graphs','calendar','stats','paychecks','donate','setup'];
+  function showTab(t, push){
+    if(!TABS.includes(t) || prefs.hidden[t]) t = 'home';
+    tab = t; pendingDelete = null;
+    document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.setAttribute('aria-selected', String(b.dataset.tab===t)));
+    TABS.forEach(k=>$('view-'+k).hidden = k!==t);
+    if(push && !(history.state && history.state.tab===t)){ try{ history.pushState({ tab:t }, '', t==='home' ? location.pathname + location.search : '#'+t); }catch(e){} }
+    render();
+    window.scrollTo(0,0);
+  }
+  document.querySelector('.tabs').addEventListener('click', e=>{ const b = e.target.closest('[data-tab]'); if(b) showTab(b.dataset.tab, true); });
+  window.addEventListener('popstate', e=>{ if(!$('welcome').hidden) return; showTab((e.state && e.state.tab) || location.hash.slice(1) || 'home'); });
+
+  // ---------- render ----------
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const charts = {};
+  function mk(id, cfg){ if(charts[id]) charts[id].destroy(); charts[id] = new Chart($(id), cfg); }
+  function chartBase(){ Chart.defaults.font.family = css('--f-body') || 'system-ui'; Chart.defaults.font.size = 12; Chart.defaults.color = css('--muted'); Chart.defaults.borderColor = css('--line'); }
+
+  function render(){
+    document.querySelectorAll('.sampleBanner').forEach(b=>b.hidden = !usingSample());
+    document.querySelectorAll('[data-range]').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.range===range)));
+    const wagesOn = !!wageMap();
+    document.querySelectorAll('.rangeLabel').forEach(p=>p.textContent = rangeName() + (wagesOn ? ' · tips plus paychecks' : ''));
+    document.querySelectorAll('.incl-slot').forEach(slot=>{
+      const always = !!slot.closest('#view-paychecks');
+      slot.innerHTML = (checks.length || always) ? `<button type="button" class="switch" role="switch" aria-checked="${includeChecks}" data-incl><span class="knob" aria-hidden="true"></span><span>Include paychecks</span></button>` : '';
+    });
+    applyTabs();
+    if(prefs.hidden[tab]){ showTab('home', true); return; }
+    if(tab==='setup') renderSettings();
+    if(tab==='paychecks') renderPaychecks();
+    if(tab==='home') renderHome();
+    if(tab==='calendar') renderCalendar();
+    if(tab==='graphs' && window.Chart){ chartBase(); renderGraphs(); }
+    if(tab==='stats') renderStats();
+    if(tab==='donate') renderDonate();
+  }
+
+  function renderHome(){
+    const t = todayIso();
+    $('todayTitle').textContent = long(t);
+    const list = dayList('todayList', t, homeForm);
+    $('todayCount').textContent = list.length ? list.length + ' shift' + (list.length===1?'':'s') : '';
+    $('todayLine').textContent = list.length ? money(summarize(list).net) + ' take-home so far today' : 'No shifts logged yet today';
+    renderPast(t, list.length ? summarize(list) : null);
+    $('homeFootNote').textContent = dataLine();
+    renderGoals(t, list);
+    renderReminder();
+    renderRate();
+  }
+
+  function weekStartOf(d){ return addDays(d, -((d.getDay() - (prefs.weekStart===1?1:0) + 7) % 7)); }
+  function goalCard(name, have, goal, sub){
+    const p = Math.max(0, Math.min(1, have/goal)), met = have >= goal;
+    return `<div class="goal${met?' met':''}"><div class="goal-top"><span class="label">${name}</span><span class="num">${money(have,0)} <span class="muted">of ${money(goal,0)}</span></span></div>
+      <div class="bar" role="progressbar" aria-label="${name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(p*100)}"><i style="width:${(p*100).toFixed(1)}%"></i></div>
+      <div class="s">${met ? 'Goal reached' + (have>goal ? ', ' + money(have-goal,0) + ' over' : '') : money(goal-have,0) + ' to go'}${sub ? ' · ' + sub : ''}</div></div>`;
+  }
+  function renderGoals(t, todayList){
+    const gn = num(prefs.goalNight), gw = num(prefs.goalWeek);
+    const cards = [];
+    if(gn > 0) cards.push(goalCard('Tonight', summarize(todayList).net, gn));
+    if(gw > 0){
+      const ws = iso(weekStartOf(parseD(t)));
+      const wk = summarize(byDay(realShifts().filter(s=>s.date>=ws && s.date<=t)));
+      cards.push(goalCard('This week', wk.net, gw, 'since ' + DOW[parseD(ws).getDay()] + ' ' + short(ws)));
+    }
+    $('goals').innerHTML = cards.join(''); $('goals').hidden = !cards.length;
+  }
+  function renderReminder(){
+    const box = $('remind'), days = num(prefs.remindDays);
+    const has = real.length + checks.length > 0;
+    const lb = lsGet(K.lastBackup), ref = lb || lsGet(K.since);
+    const age = ref ? Math.floor((Date.now() - new Date(ref).getTime()) / 864e5) : 0;
+    const due = lb ? days : Math.min(days, 3); // first backup is due sooner
+    const show = days > 0 && has && ref && age >= due && !(num(prefs.snoozeUntil) > Date.now());
+    box.hidden = !show; if(!show) return;
+    $('remindText').innerHTML = lb ? `<strong>Time for a backup.</strong> Your last one was ${age} days ago.` : `<strong>Back up your shifts.</strong> They're only saved on this phone, and you haven't made a backup yet. If the app is uninstalled, they're gone.`;
+  }
+  $('remindNow').addEventListener('click', ()=>{ showTab('setup', true); $('backupBtn').click(); });
+  $('remindLater').addEventListener('click', ()=>{ prefs.snoozeUntil = Date.now() + 3*864e5; savePrefs(); render(); });
+
+  // Same weekday as `date`, k years back, landing on the closest calendar date (never more than 3 days off)
+  function sameDayYearsAgo(date, k){
+    const d = parseD(date);
+    let t = new Date(d.getFullYear()-k, d.getMonth(), d.getDate());
+    if(t.getMonth() !== d.getMonth()) t = new Date(d.getFullYear()-k, d.getMonth()+1, 0); // Feb 29 -> Feb 28
+    let diff = (d.getDay() - t.getDay() + 7) % 7; if(diff > 3) diff -= 7;
+    return iso(addDays(t, diff));
+  }
+  // Same calendar date k years back (Feb 29 falls back to Feb 28)
+  function sameDateYearsAgo(date, k){
+    const d = parseD(date);
+    let t = new Date(d.getFullYear()-k, d.getMonth(), d.getDate());
+    if(t.getMonth() !== d.getMonth()) t = new Date(d.getFullYear()-k, d.getMonth()+1, 0);
+    return iso(t);
+  }
+  let pastMode = 'weekday';
+  try{ pastMode = localStorage.getItem('tipjar.pastMode') === 'date' ? 'date' : 'weekday'; }catch(e){}
+  $('pastMode').value = pastMode;
+  $('pastMode').addEventListener('change', e=>{ pastMode = e.target.value; try{ localStorage.setItem('tipjar.pastMode', pastMode); }catch(_){} render(); });
+  function pastNotes(shifts, date){
+    const n = shifts.filter(s=>s.date===date && s.notes).map(s=>s.notes).join(' · ');
+    return n ? `<small class="pnote">“${esc(n)}”</small>` : '';
+  }
+  function renderPast(date, todaySum){
+    const shifts = realShifts();
+    const days = new Map(byDay(shifts).map(x=>[x.date, x]));
+    const thisY = parseD(date).getFullYear();
+    const firstY = shifts.length ? Math.min(...shifts.map(s=>+s.date.slice(0,4))) : thisY;
+    const rows = [];
+    for(let k=1; k<=10 && thisY-k >= firstY; k++){
+      const pd = pastMode==='date' ? sameDateYearsAgo(date, k) : sameDayYearsAgo(date, k), rec = days.get(pd);
+      if(!rec){ rows.push(`<div class="prow off"><span class="py">${thisY-k}</span><span class="pd">${nice(pd).replace(/, \d{4}$/,'')}</span><span class="pa">No shift logged</span></div>`); continue; }
+      const df = todaySum ? todaySum.net - rec.net : null;
+      rows.push(`<div class="prow"><span class="py">${thisY-k}</span>
+        <span class="pd">${nice(pd).replace(/, \d{4}$/,'')}<small>${hm(rec.hours)} worked · ${money(rec.hourly)}/hr${rec.n>1?' · '+rec.n+' shifts':''}</small>${pastNotes(shifts, pd)}</span>
+        <span class="pa">${money(rec.net)}${df==null?'':`<small class="${df>=0?'up':'down'}">${signed(df)} today</small>`}</span></div>`);
+    }
+    $('pastList').innerHTML = rows.length ? rows.join('') :
+      `<p class="empty">Once you have shifts logged from ${thisY-1} or earlier, ${pastMode==='date' ? 'this same date' : 'the same '+DOWL[parseD(date).getDay()]} from each past year shows up here so you can see how today stacks up.</p>`;
+  }
+
+  function renderCalendar(){
+    const y = calMonth.getFullYear(), m = calMonth.getMonth();
+    const days = new Map(byDay(realShifts()).map(d=>[d.date,d]));
+    const nowY = today().getFullYear();
+    let firstY = nowY - 10;
+    days.forEach((_,k)=>{ firstY = Math.min(firstY, +k.slice(0,4)); });
+    firstY = Math.min(firstY, y);
+    const lastY = Math.max(nowY + 1, y);
+    let yo = ''; for(let yy=lastY; yy>=firstY; yy--) yo += `<option value="${yy}"${yy===y?' selected':''}>${yy}</option>`;
+    $('calYearSel').innerHTML = yo;
+    $('calMonthSel').innerHTML = MONL.map((n,i)=>`<option value="${i}"${i===m?' selected':''}>${n}</option>`).join('');
+    const first = new Date(y,m,1), lead = first.getDay(), count = new Date(y,m+1,0).getDate();
+    const monthDays = [...days.values()].filter(d=>d.date.startsWith(y+'-'+pad(m+1)));
+    const max = Math.max(1, ...monthDays.map(d=>d.net));
+    let html = DOW.map(d=>`<div class="dow">${d}</div>`).join('');
+    for(let i=0;i<lead;i++) html += '<div class="day out" aria-hidden="true"></div>';
+    const t = todayIso();
+    const noted = new Set(realShifts().filter(s=>s.notes).map(s=>s.date));
+    for(let d=1; d<=count; d++){
+      const key = y+'-'+pad(m+1)+'-'+pad(d); const rec = days.get(key);
+      const heat = rec ? Math.round(12 + 38*(Math.max(0,rec.net)/max)) : 0;
+      html += `<button type="button" class="day${rec?' worked':''}${key===t?' today':''}" data-day="${key}" aria-pressed="${key===calSel}" style="--heat:${heat}" aria-label="${nice(key)}${rec?', '+money(rec.net)+' take-home':''}${noted.has(key)?', has notes':''}">
+        <span class="d">${d}${noted.has(key)?'<i class="ndot" title="Has notes"></i>':''}</span><span class="amt">${rec?money(rec.net,0):''}</span></button>`;
+    }
+    $('calGrid').innerHTML = html;
+    const ms = summarize(monthDays);
+    $('calFoot').innerHTML = ms.n ? `<span>Days worked <strong>${ms.n}</strong></span><span>Take-home <strong>${money(ms.net,0)}</strong></span><span>Per hour <strong>${money(ms.hourly)}</strong></span><span>Time worked <strong>${hm(ms.hours)}</strong></span>` : '<span>No shifts logged this month.</span>';
+    $('calDayTitle').textContent = long(calSel);
+    const list = dayList('calDayList', calSel, calForm);
+    $('calDayCount').textContent = list.length ? list.length + ' shift' + (list.length===1?'':'s') : '';
+    calForm.setDate(calSel);
+  }
+  $('calGrid').addEventListener('click', e=>{ const b = e.target.closest('[data-day]'); if(!b) return; calSel = b.dataset.day; pendingDelete=null; if(!calForm.editingId) calForm.reset(calSel); render(); });
+  $('calPrev').addEventListener('click', ()=>{ calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()-1, 1); render(); });
+  $('calNext').addEventListener('click', ()=>{ calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 1); render(); });
+  const pickMonth = () => { calMonth = new Date(+$('calYearSel').value, +$('calMonthSel').value, 1); render(); };
+  $('calMonthSel').addEventListener('change', pickMonth);
+  $('calYearSel').addEventListener('change', pickMonth);
+  $('calToday').addEventListener('click', ()=>{ const t=today(); calMonth = new Date(t.getFullYear(), t.getMonth(), 1); calSel = todayIso(); if(!calForm.editingId) calForm.reset(calSel); render(); });
+
+  function inRangeDays(){ const all = byDay(analysisShifts(), wageMap()); const st = rangeStart(); return { all, list: st ? all.filter(s=>s.date>=st) : all, st }; }
+
+  function renderGraphs(){
+    const { all, list } = inRangeDays();
+    let labels, cc, cash, hr, wage;
+    const wagesOn = !!wageMap();
+    document.querySelectorAll('.wageLegend').forEach(e=>e.hidden = !wagesOn);
+    if(list.length > 100){
+      const m = new Map();
+      list.forEach(s=>{ const k=iso(weekStartOf(parseD(s.date))); const g=m.get(k)||{cc:0,cash:0,wage:0,net:0,hours:0}; g.cc+=s.cc; g.cash+=s.cash; g.wage+=s.wage; g.net+=s.net; g.hours+=s.hours; m.set(k,g); });
+      const keys=[...m.keys()].sort();
+      labels = keys.map(k=>'Wk of '+short(k)); cc = keys.map(k=>m.get(k).cc); cash = keys.map(k=>m.get(k).cash); wage = keys.map(k=>m.get(k).wage); hr = keys.map(k=>m.get(k).hours? m.get(k).net/m.get(k).hours : null);
+      $('shiftChartTitle').textContent = 'Every week';
+    } else {
+      labels = list.map(s=>short(s.date)); cc = list.map(s=>s.cc); cash = list.map(s=>s.cash); wage = list.map(s=>s.wage); hr = list.map(s=>s.hourly);
+      $('shiftChartTitle').textContent = 'Every day worked';
+    }
+    mk('shiftChart',{
+      data:{ labels, datasets:[
+        { type:'line', label:'Take-home per hour', data:hr, yAxisID:'y2', borderColor:css('--ink'), backgroundColor:css('--ink'), borderWidth:1.5, pointRadius:list.length<40?3:0, pointHoverRadius:4, tension:.3, spanGaps:true, order:0 },
+        { type:'bar', label:'Credit card', data:cc, backgroundColor:css('--card'), stack:'t', order:1, borderRadius:2, maxBarThickness:48 },
+        { type:'bar', label:'Cash', data:cash, backgroundColor:css('--cash'), stack:'t', order:1, borderRadius:2, maxBarThickness:48 },
+        ...(wagesOn ? [{ type:'bar', label:'Paycheck', data:wage, backgroundColor:css('--wage'), stack:'t', order:1, borderRadius:2, maxBarThickness:48 }] : [])
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'index',intersect:false},
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>' '+c.dataset.label+': '+money(c.parsed.y) } } },
+        scales:{ x:{ stacked:true, grid:{display:false}, ticks:{maxRotation:0, autoSkipPadding:12} },
+          y:{ stacked:true, beginAtZero:true, ticks:{callback:v=>'$'+v}, title:{display:true,text:wagesOn?'Tips + pay':'Tips'} },
+          y2:{ position:'right', beginAtZero:true, grid:{display:false}, ticks:{callback:v=>'$'+v}, title:{display:true,text:'Per hour'} } } }
+    });
+    const order=[1,2,3,4,5,6,0];
+    const g = order.map(w=>summarize(list.filter(s=>parseD(s.date).getDay()===w)));
+    mk('dowChart',{ type:'bar',
+      data:{ labels: order.map(w=>DOW[w]), datasets:[{ label:'Avg take-home', data:g.map(x=>x.avg), backgroundColor:css('--accent'), borderRadius:3, maxBarThickness:56 }] },
+      options:{ responsive:true, maintainAspectRatio:false, animation:false,
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>{ const x=g[c.dataIndex]; return [' Avg take-home: '+money(x.avg), ' Avg per hour: '+money(x.hourly), ' Days worked: '+x.n]; } } } },
+        scales:{ x:{grid:{display:false}}, y:{ beginAtZero:true, ticks:{callback:v=>'$'+v} } } } });
+    const years = [...new Set(all.map(s=>s.date.slice(0,4)))].sort();
+    const pal = [css('--accent'), css('--card'), css('--cash'), css('--muted'), css('--neg')];
+    const ds = years.slice().reverse().map((y,i)=>{
+      const months = Array(12).fill(null);
+      all.filter(s=>s.date.startsWith(y)).forEach(s=>{ const mo=+s.date.slice(5,7)-1; months[mo]=(months[mo]||0)+s.net; });
+      return { label:y, data:months, borderColor:pal[i%pal.length], backgroundColor:pal[i%pal.length], borderWidth:i===0?2.5:1.5, pointRadius:i===0?3:2, tension:.25 };
+    });
+    mk('yoyChart',{ type:'line', data:{ labels:MON, datasets:ds },
+      options:{ responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'index',intersect:false},
+        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10 } }, tooltip:{ callbacks:{ label:c=>' '+c.dataset.label+': '+money(c.parsed.y,0) } } },
+        scales:{ x:{grid:{display:false}}, y:{ beginAtZero:true, ticks:{callback:v=>'$'+v.toLocaleString()} } } } });
+  }
+
+  function renderStats(){
+    const { all, list, st } = inRangeDays();
+    const shiftsAll = analysisShifts();
+    const shifts = st ? shiftsAll.filter(s=>s.date>=st) : shiftsAll;
+    const s = summarize(list);
+    $('k-net').textContent = money(s.net,0);
+    $('k-net-s').textContent = s.n + ' day' + (s.n===1?'':'s') + ' worked' + (shifts.length>s.n ? ', '+shifts.length+' shifts' : '');
+    if(s.wage) $('k-net-s').textContent += ' · incl. ' + money(s.wage,0) + ' paychecks';
+    $('k-avg').textContent = money(s.avg);
+    let note = '';
+    if(st){
+      const pa = iso(addDays(parseD(st),-364)), pb = iso(addDays(today(),-364));
+      const prev = summarize(all.filter(x=>x.date>=pa && x.date<=pb));
+      if(prev.n && s.n){ const diff = s.avg - prev.avg; note = (diff>=0?'▲ ':'▼ ') + money(Math.abs(diff)) + ' vs. a year ago'; $('k-avg-s').className = 's ' + (diff>=0?'up':'down'); }
+    }
+    if(!note) $('k-avg-s').className = 's';
+    $('k-avg-s').textContent = note || 'after tipshare';
+    $('k-hr').textContent = money(s.hourly);
+    $('k-hr-s').textContent = s.hours ? hm(s.hours)+' worked' : '';
+    $('k-pct').textContent = pct(s.tipPct);
+    $('k-pct-s').textContent = s.share ? money(s.share,0)+' tipped out' : '';
+    $('k-tips').textContent = money(s.total,0);
+    $('k-tips-s').textContent = s.total ? Math.round(s.cc/s.total*100)+'% card, '+Math.round(s.cash/s.total*100)+'% cash' : '';
+    $('k-sales').textContent = money(s.sales,0);
+    $('k-sales-s').textContent = s.n ? money(s.sales/s.n,0)+' per day' : '';
+    const best = list.reduce((a,b)=> !a || b.net>a.net ? b : a, null);
+    const bestHr = list.filter(x=>x.hourly!=null).reduce((a,b)=> !a || b.hourly>a.hourly ? b : a, null);
+    $('k-best').textContent = best ? money(best.net) : '—'; $('k-best-s').textContent = best ? nice(best.date) : '';
+    $('k-besthr').textContent = bestHr ? money(bestHr.hourly) : '—'; $('k-besthr-s').textContent = bestHr ? nice(bestHr.date) : '';
+    renderCompare(all);
+    // by year
+    const years = [...new Set(all.map(x=>x.date.slice(0,4)))].sort().reverse();
+    $('yearBody').innerHTML = years.length ? years.map(y=>{ const z = summarize(all.filter(x=>x.date.startsWith(y)));
+      return `<tr><td><strong>${y}</strong></td><td class="r num">${z.n}</td><td class="r num">${hm(z.hours)}</td><td class="r num">${money(z.sales,0)}</td><td class="r num">${money(z.total,0)}</td><td class="r num">${money(z.share,0)}</td><td class="r num">${z.wage ? money(z.wage,0) : '—'}</td><td class="r num"><strong>${money(z.net,0)}</strong></td><td class="r num">${money(z.avg)}</td><td class="r num">${money(z.hourly)}</td><td class="r num">${pct(z.tipPct)}</td></tr>`; }).join('')
+      : '<tr><td colspan="11" class="empty">No shifts yet.</td></tr>';
+    // history
+    const editable = !usingSample();
+    $('histBody').innerHTML = shifts.length ? shifts.slice().reverse().map(x=>`<tr>
+      <td>${nice(x.date)}</td><td>${esc(x.label||'—')}</td><td class="r num">${hm(x.hours)}</td><td class="r num">${money(x.sales)}</td>
+      <td class="r num">${money(x.cc)}</td><td class="r num">${money(x.cash)}</td><td class="r num">${money(x.tipshare)}</td>
+      <td class="r num"><strong>${money(x.net)}</strong></td><td class="r num">${money(x.hourly)}</td><td class="r num">${pct(x.tipPct)}</td><td class="hnote" title="${esc(x.notes)}">${esc(x.notes)}</td>
+      <td class="r">${editable?`<button type="button" class="link" data-open="${esc(x.id)}">Edit</button>`:''}</td></tr>`).join('')
+      : '<tr><td colspan="12" class="empty">No shifts in this range.</td></tr>';
+    $('exportBtn').hidden = usingSample();
+  }
+  $('histBody').addEventListener('click', e=>{
+    const b = e.target.closest('[data-open]'); if(!b) return;
+    const s = findShift(b.dataset.open); if(!s) return;
+    calSel = s.date; const d = parseD(s.date); calMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+    showTab('calendar', true); calForm.edit({ ...s });
+  });
+
+  function renderCompare(all){
+    const sel = $('cmpDate');
+    const dates = all.map(s=>s.date).reverse();
+    if(!dates.length){ sel.innerHTML=''; $('cmpBody').innerHTML='<p class="empty">Log a shift to compare it with earlier years.</p>'; return; }
+    if(!cmpDate || !dates.includes(cmpDate)) cmpDate = dates[0];
+    sel.innerHTML = dates.slice(0,600).map(d=>`<option value="${d}"${d===cmpDate?' selected':''}>${nice(d)}</option>`).join('');
+    const by = new Map(all.map(s=>[s.date,s]));
+    const s = by.get(cmpDate), d = parseD(cmpDate), w = d.getDay();
+    const same = summarize(all.filter(x=>x.date!==cmpDate && parseD(x.date).getDay()===w));
+    const diffAvg = same.avg!=null ? s.net - same.avg : null;
+    let html = `<div class="cmp-hero">
+      <div><div class="label">Take-home</div><div class="v">${money(s.net)}</div></div>
+      <div><div class="label">Per hour</div><div class="v">${money(s.hourly)}</div></div>
+      <div><div class="label">Tip %</div><div class="v">${pct(s.tipPct)}</div></div>
+      <div><div class="label">vs. your avg ${DOW[w]}</div><div class="v ${diffAvg==null?'':diffAvg>=0?'up':'down'}">${diffAvg==null?'—':signed(diffAvg)}</div></div>
+    </div>`;
+    const lines = [];
+    for(let k=1;k<=6;k++){
+      const a = iso(addDays(d,-364*k));
+      const b = (d.getFullYear()-k)+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+      if(by.has(a)) lines.push({ what: 'Same '+DOW[w]+', '+(k===1?'last year':k+' years ago'), x: by.get(a) });
+      if(b!==a && by.has(b)) lines.push({ what: 'Same date, '+(k===1?'last year':k+' years ago'), x: by.get(b) });
+    }
+    html += !lines.length ? '<p class="empty">No days from earlier years on this weekday or date yet. Once you have a year of shifts logged, they show up here.</p>' :
+      `<div class="table-wrap"><table><thead><tr><th>Compared with</th><th>Date</th><th class="r">Take-home</th><th class="r">Per hr</th><th class="r">Tip %</th><th class="r">This day vs. then</th></tr></thead><tbody>` +
+      lines.map(l=>{ const df = s.net - l.x.net; return `<tr><td>${l.what}</td><td>${nice(l.x.date)}</td><td class="r num">${money(l.x.net)}</td><td class="r num">${money(l.x.hourly)}</td><td class="r num">${pct(l.x.tipPct)}</td><td class="r num ${df>=0?'up':'down'}">${signed(df)}</td></tr>`; }).join('') + '</tbody></table></div>';
+    $('cmpBody').innerHTML = html;
+  }
+  $('cmpDate').addEventListener('change', e=>{ cmpDate = e.target.value; render(); });
+
+  $('exportBtn').addEventListener('click', async ()=>{
+    if(usingSample()) return;
+    const head = 'date,shift,hours,sales,credit_card_tips,cash_tips,all_tips,tipshare,take_home,per_hour,tip_pct_of_sales,notes';
+    const lines = realShifts().map(s=>[s.date,'"'+String(s.label).replace(/"/g,'""')+'"',s.hours,s.sales,s.cc,s.cash,s.total.toFixed(2),s.tipshare,s.net.toFixed(2),s.hourly==null?'':s.hourly.toFixed(2),s.tipPct==null?'':(s.tipPct*100).toFixed(1),'"'+String(s.notes||'').replace(/"/g,'""').replace(/\r?\n/g,' ')+'"'].join(','));
+    await saveFile('tip-jar-shifts-' + todayIso() + '.csv', [head,...lines].join('\n'), 'text/csv');
+  });
+
+  // ---------- paychecks ----------
+  document.addEventListener('click', async e=>{
+    const sw = e.target.closest('[data-incl]'); if(!sw || !store) return;
+    try{ await store.setPref({ includeChecks: !includeChecks }); toast(includeChecks ? 'Paychecks included in graphs and stats' : 'Graphs and stats now show tips only'); }
+    catch(err){ toast('That setting did not save. Try again.'); }
+  });
+  const P = { pay:$('p-pay'), freq:$('p-freq'), start:$('p-start'), end:$('p-end'), hh:$('p-hh'), mm:$('p-mm'), gross:$('p-gross'), net:$('p-net') };
+  let pEditing = null, pEndAuto = true;
+  function autoEnd(){ if(!pEndAuto || !P.start.value) return; P.end.value = iso(addDays(parseD(P.start.value), P.freq.value==='weekly' ? 6 : 13)); }
+  P.start.addEventListener('change', autoEnd);
+  P.freq.addEventListener('change', autoEnd);
+  P.end.addEventListener('input', ()=>{ pEndAuto = false; });
+  function pReset(){
+    pEditing = null; pEndAuto = true;
+    P.pay.value = todayIso(); P.start.value = ''; P.end.value = '';
+    ['hh','mm','gross','net'].forEach(k=>P[k].value='');
+    const last = checks.slice().sort((a,b)=>a.payDate<b.payDate?1:-1)[0];
+    P.freq.value = last && last.freq ? last.freq : 'biweekly';
+    $('p-note').textContent = ''; $('p-save').textContent = 'Save paycheck'; $('p-cancel').textContent = 'Clear'; $('p-sub').textContent = 'New check';
+  }
+  function pEdit(c){
+    pEditing = c.id; pEndAuto = false;
+    P.pay.value = c.payDate || ''; P.freq.value = c.freq || 'biweekly'; P.start.value = c.start || ''; P.end.value = c.end || '';
+    const mins = Math.round(num(c.hours)*60); P.hh.value = mins ? Math.floor(mins/60) : ''; P.mm.value = mins ? pad(mins%60) : '';
+    P.gross.value = c.gross || ''; P.net.value = c.net || '';
+    $('p-note').textContent = 'Editing the check paid ' + short(c.payDate) + '.'; $('p-save').textContent = 'Update paycheck'; $('p-cancel').textContent = 'Cancel'; $('p-sub').textContent = 'Editing';
+    P.pay.focus();
+  }
+  $('p-cancel').addEventListener('click', pReset);
+  $('p-form').addEventListener('submit', async ev=>{
+    ev.preventDefault();
+    const note = $('p-note');
+    const c = { payDate:P.pay.value, freq:P.freq.value, start:P.start.value, end:P.end.value,
+      hours: +(Math.floor(num(P.hh.value)) + Math.floor(num(P.mm.value))/60).toFixed(4), gross:num(P.gross.value), net:num(P.net.value) };
+    if(!c.payDate){ note.textContent = 'Pick the date you were paid.'; P.pay.focus(); return; }
+    if(num(P.mm.value) >= 60){ note.textContent = 'Minutes go from 0 to 59.'; P.mm.focus(); return; }
+    if(c.start && c.end && c.start > c.end){ note.textContent = 'The pay period has to start before it ends.'; P.end.focus(); return; }
+    if(!(c.net>0) && !(c.gross>0)){ note.textContent = 'Enter the net pay from the check, or at least the gross pay.'; P.net.focus(); return; }
+    if(!store){ note.textContent = 'Still connecting. Try again in a moment.'; return; }
+    const id = pEditing || newId(), was = pEditing;
+    $('p-save').disabled = true;
+    try{ await store.save('checks', id, { ...c, updatedAt:new Date().toISOString() }); toast(was ? 'Paycheck updated' : 'Paycheck saved'); pReset(); render(); }
+    catch(e){ note.textContent = 'That paycheck did not save. Check your connection and try again.'; }
+    finally{ $('p-save').disabled = false; }
+  });
+  $('checkList').addEventListener('click', async ev=>{
+    const ed = ev.target.closest('[data-pedit]'), del = ev.target.closest('[data-pdel]');
+    if(ed){ const c = checks.find(x=>x.id===ed.dataset.pedit); if(c) pEdit(c); }
+    if(del){
+      const id = del.dataset.pdel;
+      if(pendingDelete!==id){ pendingDelete=id; render(); return; }
+      pendingDelete=null;
+      try{ await store.remove('checks', id); if(pEditing===id) pReset(); toast('Paycheck deleted'); }catch(e){ toast('That paycheck was not deleted. Try again.'); render(); }
+    }
+  });
+  function renderPaychecks(){
+    const list = checks.slice().sort((a,b)=>a.payDate<b.payDate?1:-1);
+    $('p-count').textContent = list.length ? list.length + ' check' + (list.length===1?'':'s') : '';
+    if(!list.length){ $('checkList').innerHTML = '<p class="empty">No paychecks logged. If you get one, fill in the check to add it. If you live on tips only, you can skip this tab.</p>'; return; }
+    const yr = String(today().getFullYear());
+    const ytd = list.filter(c=>(c.payDate||'').startsWith(yr));
+    const ytdNet = ytd.reduce((a,c)=>a+checkAmt(c),0);
+    $('checkList').innerHTML = '<div class="daylist">' + list.map(c=>`<div class="shift">
+        <div class="name">Paid ${esc(nice(c.payDate))}</div><div class="net">${money(checkAmt(c))}</div>
+        <div class="meta">${c.start&&c.end?`<span>${short(c.start)} – ${short(c.end)}</span>`:''}<span>${c.freq==='weekly'?'Weekly':'Every 2 weeks'}</span>${num(c.hours)?`<span>${hm(c.hours)} on check</span>`:''}${num(c.gross)?`<span>Gross ${money(c.gross)}</span>`:''}${num(c.net)?'':'<span>No net pay entered, counting gross</span>'}</div>
+        <div class="acts"><button type="button" class="link" data-pedit="${esc(c.id)}">Edit</button><button type="button" class="link danger" data-pdel="${esc(c.id)}">${pendingDelete===c.id?'Tap again to delete':'Delete'}</button></div>
+      </div>`).join('') + '</div>' +
+      `<div class="daytotal"><span>${yr} so far · <span class="muted">${ytd.length} check${ytd.length===1?'':'s'}</span></span><span class="num">${money(ytdNet)}</span></div>`;
+  }
+
+  // ---------- donate ----------
+  const clean = s => String(s||'').trim().replace(/^[@$]/,'').replace(/[^A-Za-z0-9_\-.]/g,'');
+  function renderDonate(){
+    $('donHeading').textContent = TIPS.heading || 'Like Tip Jar?';
+    $('donMsg').textContent = TIPS.message || 'Tip Jar is free. If it helps you keep track of your money, you can leave a tip for the person who built it.';
+    const ways = [];
+    const v = clean(TIPS.venmo), c = clean(TIPS.cashapp), p = clean(TIPS.paypal);
+    if(v) ways.push({ name:'Venmo', handle:'@'+v, href:'https://venmo.com/u/'+encodeURIComponent(v) });
+    if(c) ways.push({ name:'Cash App', handle:'$'+c, href:'https://cash.app/$'+encodeURIComponent(c) });
+    if(p) ways.push({ name:'PayPal', handle:'paypal.me/'+p, href:'https://paypal.me/'+encodeURIComponent(p) });
+    $('donWays').innerHTML = ways.length ? ways.map(w=>`<div class="way"><div><div class="label">${w.name}</div><div class="h">${esc(w.handle)}</div></div>
+        <div class="acts"><button type="button" class="btn" data-copy="${esc(w.handle)}">Copy</button><a class="btn" href="${esc(w.href)}" target="_blank" rel="noopener">Open ${w.name}</a></div></div>`).join('')
+      : '<p class="empty">Tip options are coming soon.</p>';
+  }
+  $('donWays').addEventListener('click', e=>{
+    const b = e.target.closest('[data-copy]'); if(!b) return;
+    const text = b.dataset.copy;
+    try{ navigator.clipboard.writeText(text).then(()=>toast('Copied '+text), ()=>toast('Select the name and copy it')); }catch(err){ toast('Select the name and copy it'); }
+  });
+  let toastT;
+  function toast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2200); }
+
+  const reTheme = () => render();
+  try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', reTheme); }catch(e){}
+  new MutationObserver(reTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+  // roll Home over to the new day if the page stays open past midnight
+  let lastDay = todayIso();
+  setInterval(()=>{ const t = todayIso(); if(t!==lastDay){ lastDay=t; if(!homeForm.editingId) homeForm.reset(); render(); } }, 60000);
+
+  // ---------- storage: this device only ----------
+  const K = { shifts:'tipbook.shifts.v2', checks:'tipbook.checks', incl:'tipbook.includeChecks', prefs:'tipjar.prefs', lastBackup:'tipjar.lastBackup', since:'tipjar.since' };
+  const defaultPrefs = () => ({ hidden:{}, hideFields:{}, tipsharePct:null, goalNight:null, goalWeek:null, theme:'system', weekStart:0, remindDays:14, snoozeUntil:0 });
+  const origTheme = document.documentElement.getAttribute('data-theme');
+  function applyTheme(){
+    const want = (prefs.theme==='light' || prefs.theme==='dark') ? prefs.theme : origTheme;
+    if(document.documentElement.getAttribute('data-theme') === want) return;
+    if(want) document.documentElement.setAttribute('data-theme', want); else document.documentElement.removeAttribute('data-theme');
+  }
+  function applyFields(){
+    const hf = prefs.hideFields || {};
+    document.querySelectorAll('form [data-field]').forEach(el=>{ el.hidden = !!hf[el.dataset.field]; });
+    const p = num(prefs.tipsharePct);
+    document.querySelectorAll('[data-sharehint]').forEach(el=>{ el.textContent = p>0 && !hf.sales ? 'auto: ' + p + '% of sales' : 'tipped out to support staff'; });
+  }
+  const mem = {};
+  let storageOK = true;
+  try{ localStorage.setItem('tipjar.test','1'); localStorage.removeItem('tipjar.test'); }catch(e){ storageOK = false; }
+  const lsGet = k => { try{ const v = localStorage.getItem(k); if(v!=null) return v; }catch(e){} return k in mem ? mem[k] : null; };
+  const lsSet = (k, v) => { mem[k] = v; try{ localStorage.setItem(k, v); }catch(e){} };
+  const lsDel = k => { delete mem[k]; try{ localStorage.removeItem(k); }catch(e){} };
+  const loadList = k => { try{ const v = JSON.parse(lsGet(K[k]) || '[]'); return Array.isArray(v) ? v : []; }catch(e){ return []; } };
+  const putList = (k, list) => { lsSet(K[k], JSON.stringify(list)); if(k==='shifts') real = list; else checks = list; };
+  function loadAll(){
+    real = loadList('shifts'); checks = loadList('checks');
+    includeChecks = lsGet(K.incl)==='1';
+    try{ prefs = Object.assign(defaultPrefs(), JSON.parse(lsGet(K.prefs) || '{}')); }catch(e){ prefs = defaultPrefs(); }
+    if(!prefs.hidden || typeof prefs.hidden!=='object') prefs.hidden = {};
+    if(!prefs.hideFields || typeof prefs.hideFields!=='object') prefs.hideFields = {};
+    if((real.length || checks.length) && !lsGet(K.since)) lsSet(K.since, new Date().toISOString());
+    applyTheme(); applyFields();
+  }
+  const savePrefs = () => lsSet(K.prefs, JSON.stringify(prefs));
+  store = {
+    save: async (k, id, s) => { askPersist(); if(!lsGet(K.since)) lsSet(K.since, new Date().toISOString()); const list = loadList(k).filter(x=>x.id!==id); list.push({ ...s, id }); putList(k, list); render(); },
+    remove: async (k, id) => { putList(k, loadList(k).filter(x=>x.id!==id)); render(); },
+    setPref: async p => { includeChecks = !!p.includeChecks; lsSet(K.incl, includeChecks?'1':'0'); render(); }
+  };
+  loadAll();
+  // another open tab changed the data
+  window.addEventListener('storage', e=>{ if(!e.key || e.key.startsWith('tip')){ loadAll(); render(); } });
+  $('storeNote').textContent = storageOK
+    ? 'Everything you enter is saved on this phone only. Make a backup from Settings at the bottom of Home.'
+    : 'This browser is not saving your data, so anything you enter disappears when you close Tip Jar. Open it in a regular browser window, not a private one.';
+
+  // ---------- settings ----------
+  const plural = (n, w) => n + ' ' + w + (n===1 ? '' : 's');
+  const stamp = s => { const d = new Date(s); return isNaN(d) ? '' : MON[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear(); };
+  const TAB_OPTS = [['paychecks','Paychecks','Log weekly or bi-weekly paychecks'],['stats','Stats','Totals, records and year-by-year numbers'],['graphs','Graphs','Charts of your money over time']];
+  function applyTabs(){ document.querySelectorAll('.tabs [data-tab]').forEach(b=>{ b.hidden = !!prefs.hidden[b.dataset.tab]; }); }
+  function dataLine(){
+    const lb = lsGet(K.lastBackup);
+    return `${plural(real.length,'shift')} and ${plural(checks.length,'paycheck')} saved on this device. ` + (lb ? 'Last backup: ' + stamp(lb) + '.' : 'No backup yet.');
+  }
+  const FIELD_OPTS = [['label','Shift name'],['sales','Sales'],['cc','Credit card tips'],['cash','Cash tips'],['tipshare','Tipshare'],['notes','Notes']];
+  const SET_INPUTS = { 's-remind':'remindDays', 's-tippct':'tipsharePct', 's-gnight':'goalNight', 's-gweek':'goalWeek', 's-theme':'theme', 's-week':'weekStart' };
+  function renderSettings(){
+    $('dataSummary').textContent = dataLine();
+    renderRemSettings(); renderAbout();
+    Object.entries(SET_INPUTS).forEach(([id,k])=>{ const el = $(id); if(document.activeElement===el) return; const v = prefs[k]; el.value = (v==null || v==='') ? '' : String(v); });
+    if(!$('fieldToggles').children.length) $('fieldToggles').innerHTML = FIELD_OPTS.map(([k,n])=>`<div class="set-row"><div class="set-name">${n}</div>
+      <button type="button" class="switch plain" role="switch" aria-checked="${!prefs.hideFields[k]}" data-hidefield="${k}" aria-label="Show ${n} on the check"><span class="knob" aria-hidden="true"></span><span>${prefs.hideFields[k]?'Hidden':'Shown'}</span></button></div>`).join('');
+    if(!$('tabToggles').children.length) $('tabToggles').innerHTML = TAB_OPTS.map(([k,n,d])=>`<div class="set-row"><div><div class="set-name">${n}</div><div class="set-desc">${d}</div></div>
+      <button type="button" class="switch plain" role="switch" aria-checked="${!prefs.hidden[k]}" data-hidetab="${k}" aria-label="Show the ${n} tab"><span class="knob" aria-hidden="true"></span><span>${prefs.hidden[k]?'Hidden':'Shown'}</span></button></div>`).join('');
+    // update switches in place so a tap is never lost to a redraw
+    const sync = (sel, key, map) => document.querySelectorAll(sel).forEach(b=>{ const off = !!map[b.dataset[key]]; b.setAttribute('aria-checked', String(!off)); b.lastElementChild.textContent = off ? 'Hidden' : 'Shown'; });
+    sync('[data-hidefield]', 'hidefield', prefs.hideFields); sync('[data-hidetab]', 'hidetab', prefs.hidden);
+  }
+  $('fieldToggles').addEventListener('click', e=>{
+    const b = e.target.closest('[data-hidefield]'); if(!b) return;
+    const k = b.dataset.hidefield; prefs.hideFields[k] = !prefs.hideFields[k]; savePrefs(); applyFields(); render();
+  });
+  Object.entries(SET_INPUTS).forEach(([id,k])=>{
+    $(id).addEventListener('change', e=>{
+      const raw = e.target.value;
+      if(k==='theme') prefs.theme = raw;
+      else if(k==='weekStart' || k==='remindDays') prefs[k] = +raw;
+      else { const n = parseFloat(raw); prefs[k] = (isFinite(n) && n > 0) ? Math.round(n*100)/100 : null; }
+      if(k==='remindDays') prefs.snoozeUntil = 0;
+      savePrefs(); applyTheme(); applyFields(); render();
+      toast('Saved');
+    });
+  });
+  $('tabToggles').addEventListener('click', e=>{
+    const b = e.target.closest('[data-hidetab]'); if(!b) return;
+    const k = b.dataset.hidetab; prefs.hidden[k] = !prefs.hidden[k]; savePrefs(); render();
+    toast((TAB_OPTS.find(x=>x[0]===k)||[])[1] + (prefs.hidden[k] ? ' tab hidden' : ' tab shown'));
+  });
+
+  // backup
+  function backupText(){
+    return JSON.stringify({ app:'Tip Jar', version:1, exportedAt:new Date().toISOString(),
+      shifts: loadList('shifts'), checks: loadList('checks'), settings:{ ...prefs, snoozeUntil:0, includeChecks } }, null, 1);
+  }
+  function showBackupText(msg){
+    $('backupText').value = backupText(); $('backupFallback').hidden = false; $('backupNote').textContent = msg || '';
+  }
+  $('backupBtn').addEventListener('click', async ()=>{
+    $('backupNote').textContent = '';
+    if(!real.length && !checks.length){ $('backupNote').textContent = 'There is nothing to back up yet.'; return; }
+    const how = await saveFile('tip-jar-backup-' + todayIso() + '.json', backupText(), 'application/json');
+    if(how === 'cancelled') return;
+    if(how === 'failed'){ showBackupText('The backup file could not be saved. Copy the backup text below and keep it somewhere safe, like a note or an email to yourself.'); return; }
+    lsSet(K.lastBackup, new Date().toISOString()); toast(how==='shared' ? 'Backup shared' : 'Backup saved to your downloads'); render();
+  });
+  $('copyBackup').addEventListener('click', ()=>{
+    const t = $('backupText');
+    const done = () => { lsSet(K.lastBackup, new Date().toISOString()); toast('Backup copied'); render(); };
+    try{ navigator.clipboard.writeText(t.value).then(done, ()=>{ t.select(); $('backupNote').textContent = 'Press and hold (or Ctrl+C) to copy the selected text.'; }); }
+    catch(e){ t.select(); $('backupNote').textContent = 'Press and hold (or Ctrl+C) to copy the selected text.'; }
+  });
+
+  // restore
+  let pendingRestore = null;
+  function checkBackup(text){
+    $('backupNote').textContent = ''; pendingRestore = null; $('restorePreview').hidden = true;
+    let o; try{ o = JSON.parse(text); }catch(e){ o = null; }
+    if(!o || !Array.isArray(o.shifts)){ $('backupNote').textContent = 'That is not a Tip Jar backup. Choose the .json file you downloaded from this page.'; return; }
+    const shifts = o.shifts.filter(s=>s && typeof s.id==='string' && /^\d{4}-\d{2}-\d{2}$/.test(s.date||''));
+    const chk = (Array.isArray(o.checks) ? o.checks : []).filter(c=>c && typeof c.id==='string' && /^\d{4}-\d{2}-\d{2}$/.test(c.payDate||''));
+    pendingRestore = { shifts, checks: chk, settings: (o.settings && typeof o.settings==='object') ? o.settings : {} };
+    $('restorePreview').innerHTML = `<p><strong>Backup from ${esc(stamp(o.exportedAt) || 'an unknown date')}</strong>: ${plural(shifts.length,'shift')} and ${plural(chk.length,'paycheck')}.</p>
+      <p class="muted">Replace erases the ${plural(real.length,'shift')} and ${plural(checks.length,'paycheck')} on this device and puts the backup in their place. Combine keeps both, and the backup wins where the same entry is in both.</p>
+      <div class="set-actions"><button type="button" class="btn solid" data-restore="replace">Replace with backup</button><button type="button" class="btn" data-restore="merge">Combine with my data</button><button type="button" class="btn" data-restore="cancel">Cancel</button></div>`;
+    $('restorePreview').hidden = false;
+  }
+  $('restoreFile').addEventListener('change', e=>{
+    const f = e.target.files && e.target.files[0]; if(!f) return;
+    const r = new FileReader(); r.onload = () => checkBackup(String(r.result||'')); r.onerror = () => { $('backupNote').textContent = 'That file could not be read. Try again.'; };
+    r.readAsText(f); e.target.value = '';
+  });
+  $('pasteRestore').addEventListener('click', ()=>checkBackup($('pasteText').value));
+  $('restorePreview').addEventListener('click', e=>{
+    const b = e.target.closest('[data-restore]'); if(!b) return;
+    const mode = b.dataset.restore;
+    if(mode==='cancel' || !pendingRestore){ pendingRestore = null; $('restorePreview').hidden = true; return; }
+    const merge = (k, incoming) => { const m = new Map(loadList(k).map(x=>[x.id,x])); incoming.forEach(x=>m.set(x.id,x)); return [...m.values()]; };
+    putList('shifts', mode==='replace' ? pendingRestore.shifts : merge('shifts', pendingRestore.shifts));
+    putList('checks', mode==='replace' ? pendingRestore.checks : merge('checks', pendingRestore.checks));
+    const st = pendingRestore.settings;
+    if(mode==='replace'){
+      includeChecks = !!st.includeChecks; lsSet(K.incl, includeChecks?'1':'0');
+      const { includeChecks:_ic, ...rest } = st;
+      prefs = Object.assign(defaultPrefs(), rest);
+      if(!prefs.hidden || typeof prefs.hidden!=='object') prefs.hidden = {};
+      if(!prefs.hideFields || typeof prefs.hideFields!=='object') prefs.hideFields = {};
+      savePrefs(); applyTheme(); applyFields();
+    }
+    pendingRestore = null; $('restorePreview').hidden = true; $('pasteText').value = '';
+    homeForm.reset(); calForm.reset(calSel); pReset();
+    toast('Backup restored'); render();
+  });
+
+  // delete everything, behind a typed code
+  let delCode = '';
+  $('delStart').addEventListener('click', ()=>{
+    const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    delCode = Array.from({length:4}, ()=>A[Math.floor(Math.random()*A.length)]).join('');
+    $('delConfirm').innerHTML = `<p><strong>Are you sure?</strong> This erases ${plural(real.length,'shift')}, ${plural(checks.length,'paycheck')} and your settings from this device for good.</p>
+      <p>To confirm, type this code: <span class="del-code" aria-label="${delCode.split('').join(' ')}">${delCode}</span></p>
+      <label for="delInput" class="label">Code</label>
+      <input id="delInput" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="4">
+      <div class="set-actions"><button type="button" class="btn danger-btn fill" id="delGo" disabled>Delete everything</button><button type="button" class="btn" id="delCancel">Cancel</button></div>`;
+    $('delConfirm').hidden = false; $('delStart').hidden = true; $('delInput').focus();
+  });
+  $('delConfirm').addEventListener('input', e=>{ if(e.target.id==='delInput') $('delGo').disabled = e.target.value.trim().toUpperCase() !== delCode; });
+  $('delConfirm').addEventListener('click', e=>{
+    const closeBox = () => { $('delConfirm').hidden = true; $('delConfirm').innerHTML = ''; $('delStart').hidden = false; delCode = ''; };
+    if(e.target.id==='delCancel'){ closeBox(); return; }
+    if(e.target.id==='delGo'){
+      if(!delCode || $('delInput').value.trim().toUpperCase() !== delCode) return;
+      putList('shifts', []); putList('checks', []);
+      lsDel(K.incl); lsDel(K.prefs); lsDel(K.lastBackup); lsDel(K.since); lsDel('tipjar.pastMode');
+      includeChecks = false; prefs = defaultPrefs(); applyTheme(); applyFields();
+      closeBox(); homeForm.reset(); calForm.reset(calSel); pReset();
+      toast('All data deleted'); render();
+    }
+  });
+
+  document.addEventListener('click', e=>{ const g = e.target.closest('[data-go]'); if(g) showTab(g.dataset.go, true); });
+
+  // ---------- files: share sheet on phones, download elsewhere ----------
+  async function saveFile(name, text, type){
+    const blob = new Blob([text], { type });
+    try{
+      const file = new File([blob], name, { type });
+      const touch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+      if(touch && navigator.canShare && navigator.canShare({ files:[file] })){
+        await navigator.share({ files:[file], title:name });
+        return 'shared';
+      }
+    }catch(e){ if(e && e.name === 'AbortError') return 'cancelled'; }
+    try{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 5000);
+      return 'downloaded';
+    }catch(e){ return 'failed'; }
+  }
+
+  // ask the browser not to clear Tip Jar's data when the phone runs low on space
+  let persistAsked = false;
+  function askPersist(){
+    if(persistAsked) return; persistAsked = true;
+    try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{}); }catch(e){}
+  }
+
+  const isInstalled = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true || document.referrer.startsWith('android-app://');
+
+  // ---------- welcome screens (first launch) ----------
+  let wStep = 1;
+  function showWelcome(){
+    wStep = 1; $('w-tippct').value = prefs.tipsharePct || ''; $('w-gnight').value = prefs.goalNight || ''; $('w-week').value = String(prefs.weekStart||0);
+    $('welcome').hidden = false; drawWelcome();
+  }
+  function drawWelcome(){
+    document.querySelectorAll('.w-step').forEach(el=>{ el.hidden = +el.dataset.step !== wStep; });
+    document.querySelectorAll('.w-dots i').forEach((d,i)=>d.classList.toggle('on', i===wStep-1));
+    $('wBack').hidden = wStep===1; $('wNext').textContent = wStep===3 ? 'Get started' : 'Next';
+    $('wNext').focus();
+  }
+  function finishWelcome(save){
+    if(save){
+      const n = v => { const x = parseFloat(v); return isFinite(x) && x>0 ? Math.round(x*100)/100 : null; };
+      prefs.tipsharePct = n($('w-tippct').value); prefs.goalNight = n($('w-gnight').value); prefs.weekStart = +$('w-week').value;
+      savePrefs(); applyFields();
+    }
+    lsSet('tipjar.welcomed', '1'); $('welcome').hidden = true; render();
+  }
+  $('wNext').addEventListener('click', ()=>{ if(wStep < 3){ wStep++; drawWelcome(); } else finishWelcome(true); });
+  $('wBack').addEventListener('click', ()=>{ if(wStep > 1){ wStep--; drawWelcome(); } });
+  $('wSkip').addEventListener('click', ()=>finishWelcome(false));
+  $('replayWelcome').addEventListener('click', showWelcome);
+
+  // ---------- reminder to log tips, through the phone's calendar ----------
+  const RRDAY = ['SU','MO','TU','WE','TH','FR','SA'];
+  function remDays(){ return Array.isArray(prefs.remDays) ? prefs.remDays : [4,5,6]; }
+  function remTime(){ return /^\d{2}:\d{2}$/.test(prefs.remTime||'') ? prefs.remTime : '23:00'; }
+  function nextStart(){
+    // first upcoming chosen night, at the chosen time
+    const [h,m] = remTime().split(':').map(Number), days = remDays();
+    for(let i=0;i<8;i++){ const d = addDays(today(), i); d.setHours(h, m, 0, 0); if(days.includes(d.getDay()) && d > new Date()) return d; }
+    const d = today(); d.setHours(h,m,0,0); return d;
+  }
+  const stampLocal = d => d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+'00';
+  function remRule(){ return 'RRULE:FREQ=WEEKLY;BYDAY=' + remDays().slice().sort().map(i=>RRDAY[i]).join(','); }
+  function renderRemSettings(){
+    if(!$('remDays').children.length){
+      $('remDays').innerHTML = DOW.map((d,i)=>`<button type="button" data-rday="${i}" aria-pressed="false">${d}</button>`).join('');
+    }
+    const days = remDays();
+    document.querySelectorAll('[data-rday]').forEach(b=>b.setAttribute('aria-pressed', String(days.includes(+b.dataset.rday))));
+    if(document.activeElement !== $('remTime')) $('remTime').value = remTime();
+    const st = nextStart(), en = new Date(st.getTime() + 10*60000);
+    const url = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+      + '&text=' + encodeURIComponent('Log your tips in Tip Jar')
+      + '&details=' + encodeURIComponent('Open Tip Jar and log tonight\'s shift.')
+      + '&dates=' + stampLocal(st) + '/' + stampLocal(en)
+      + '&recur=' + encodeURIComponent(remRule());
+    $('remGoogle').href = url;
+    const none = !days.length;
+    $('remGoogle').classList.toggle('is-off', none); $('remIcs').disabled = none;
+    $('remNote').textContent = none ? 'Pick at least one night.' : '';
+  }
+  $('remDays').addEventListener('click', e=>{
+    const b = e.target.closest('[data-rday]'); if(!b) return;
+    const d = +b.dataset.rday, days = remDays().slice();
+    const i = days.indexOf(d); if(i>=0) days.splice(i,1); else days.push(d);
+    prefs.remDays = days; savePrefs(); renderRemSettings();
+  });
+  $('remTime').addEventListener('change', e=>{ if(/^\d{2}:\d{2}$/.test(e.target.value)){ prefs.remTime = e.target.value; savePrefs(); renderRemSettings(); } });
+  $('remGoogle').addEventListener('click', e=>{ if(!remDays().length){ e.preventDefault(); return; } toast('Opening Google Calendar'); });
+  $('remIcs').addEventListener('click', async ()=>{
+    if(!remDays().length) return;
+    const st = nextStart(), en = new Date(st.getTime() + 10*60000);
+    const now = new Date(); const utc = now.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+    const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Tip Jar//EN','CALSCALE:GREGORIAN','BEGIN:VEVENT',
+      'UID:tipjar-reminder-' + Date.now() + '@tipjar', 'DTSTAMP:' + utc,
+      'DTSTART:' + stampLocal(st), 'DTEND:' + stampLocal(en), remRule(),
+      'SUMMARY:Log your tips in Tip Jar', 'DESCRIPTION:Open Tip Jar and log tonight\'s shift.',
+      'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:Log your tips in Tip Jar','TRIGGER:PT0M','END:VALARM',
+      'END:VEVENT','END:VCALENDAR'].join('\r\n');
+    const how = await saveFile('tip-jar-reminder.ics', ics, 'text/calendar');
+    if(how === 'failed') $('remNote').textContent = 'The reminder file could not be saved. Try "Add to Google Calendar" instead.';
+    else if(how !== 'cancelled'){ $('remNote').textContent = 'Open the saved file and choose your calendar to add the reminder.'; }
+  });
+
+  // ---------- About ----------
+  function renderAbout(){
+    $('aboutVersion').textContent = 'Version ' + (CFG.version || '1.0');
+    const email = String(CFG.feedbackEmail || '').trim();
+    $('feedbackRow').hidden = !email;
+    if(email){ $('feedbackAddr').textContent = email; $('feedbackMail').href = 'mailto:' + email + '?subject=' + encodeURIComponent('Tip Jar feedback'); }
+    const play = String(CFG.playStoreUrl || '').trim();
+    $('rateRow').hidden = !/^https:\/\//.test(play); if(play) $('rateRow').href = play;
+  }
+  $('feedbackCopy').addEventListener('click', ()=>{
+    const t = String(CFG.feedbackEmail||'');
+    try{ navigator.clipboard.writeText(t).then(()=>toast('Email address copied'), ()=>toast(t)); }catch(e){ toast(t); }
+  });
+
+  // ---------- "Rate Tip Jar" prompt after 10 shifts ----------
+  function renderRate(){
+    const play = String(CFG.playStoreUrl || '').trim();
+    const show = /^https:\/\//.test(play) && isInstalled() && real.length >= 10 && !prefs.rateDone && !(num(prefs.rateSnooze) > Date.now());
+    $('rateBox').hidden = !show; if(show) $('rateNow').href = play;
+  }
+  $('rateNow').addEventListener('click', ()=>{ prefs.rateDone = true; savePrefs(); setTimeout(render, 300); });
+  $('rateLater').addEventListener('click', ()=>{ prefs.rateSnooze = Date.now() + 14*864e5; savePrefs(); render(); });
+  $('rateNever').addEventListener('click', ()=>{ prefs.rateDone = true; savePrefs(); render(); });
+
+  // ---------- start ----------
+  function startApp(){
+    render();
+    if(lsGet('tipjar.welcomed') !== '1' && !real.length && !checks.length) showWelcome();
+    // works offline once it has loaded one time
+    if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+      window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+    }
+  }
+
+  pReset();
+  const first = (location.hash.slice(1) || 'home');
+  showTab(first);
+  try{ history.replaceState({ tab: tab }, '', tab==='home' ? location.pathname + location.search : '#'+tab); }catch(e){}
+  startApp();
+})();
+</script>
+</body>
+</html>
