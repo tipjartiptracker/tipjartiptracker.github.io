@@ -2,7 +2,7 @@
 // Fill these in, save, and upload this file with the rest of the app.
 // Keep the quotes. Leave anything you don't use as ''.
 window.TIPJAR_CONFIG = {
-  version: '1.0.0',
+  version: '1.0.1',
 
   // Where people can send feedback. Shown on the About page and in the privacy policy.
   // Example: 'tipjarapp@gmail.com'

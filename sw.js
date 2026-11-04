@@ -1,6 +1,6 @@
 // Tip Jar offline support.
 // Change VERSION whenever you upload new files, so phones clear out the old copies.
-const VERSION = 'tipjar-1.0.0';
+const VERSION = 'tipjar-1.0.1';
 const CORE = [
   './', './index.html', './config.js', './manifest.webmanifest', './privacy.html',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'

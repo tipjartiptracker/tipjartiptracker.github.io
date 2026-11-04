@@ -115,6 +115,31 @@ label.btn{display:inline-flex;align-items:center;cursor:pointer}
 .mast-logo{width:136px;height:136px;flex:none}
 @media (max-width:560px){ .mast{align-items:flex-start} .mast-logo{width:80px;height:80px} }
 .jar-logo{width:112px;height:112px;display:block;margin-bottom:12px}
+.row.time-row{grid-template-columns:1fr;gap:8px}
+.t-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--soft);border-radius:8px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:5px 10px;border-radius:6px;font-weight:600;font-size:.8rem;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.time-row .hm{justify-self:end;width:140px}
+.clockbox{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:end}
+.clockbox > span{padding-bottom:8px;color:var(--muted)}
+.clockbox label{display:grid;gap:3px;font-size:.75rem;color:var(--muted);font-weight:600}
+.clockbox input{width:100%;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:6px 8px;font-family:var(--f-num);font-size:.95rem}
+.date-btn{border:0;display:inline-flex;align-items:center;gap:7px;cursor:pointer;font:inherit;font-weight:600}
+.date-btn:hover{background:color-mix(in srgb, var(--mast-fg) 22%, transparent)}
+.back-today{border:1px solid color-mix(in srgb, var(--mast-fg) 40%, transparent);background:transparent;color:var(--mast-fg);border-radius:999px;padding:3px 11px;font:inherit;font-weight:600;font-size:.88rem;cursor:pointer}
+.picker{position:fixed;inset:0;z-index:25;background:rgba(10,20,14,.55);display:flex;align-items:center;justify-content:center;padding:max(16px, env(safe-area-inset-top,0px)) max(16px, env(safe-area-inset-right,0px)) max(16px, env(safe-area-inset-bottom,0px)) max(16px, env(safe-area-inset-left,0px));overflow:auto}
+.pk-card{background:var(--surface);color:var(--ink);border-radius:14px;width:100%;max-width:420px;padding:16px;display:grid;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.pk-head{display:flex;justify-content:space-between;align-items:center}
+.pk-x{border:0;background:var(--soft);border-radius:50%;width:32px;height:32px;font-size:1.2rem;line-height:1;color:var(--ink)}
+.pk-nav{justify-content:space-between}
+.pk-nav select{flex:1;min-width:0}
+.pk-cal .day{min-height:46px;padding:4px}
+.pk-cal .day .amt{font-size:.62rem}
+.pk-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.85rem}
+.empty-state{display:grid;gap:10px;justify-items:start;padding:22px}
+.empty-state p{margin:0;color:var(--muted);max-width:56ch}
+.sampleBanner{justify-content:space-between}
 .warn{color:var(--ink)}
 .warn strong{color:var(--neg)}
 .set-label{font-weight:600;font-size:.9rem;margin-bottom:6px}
@@ -358,7 +383,7 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
       <div class="mast-text">
         <div class="label">Tip Jar</div>
         <h1 class="mast-title">Know what every shift is <em>worth.</em></h1>
-        <p class="mast-sub"><span class="today-chip" id="todayTitle"></span><span id="todayLine"></span></p>
+        <p class="mast-sub"><button type="button" class="today-chip date-btn" id="dateBtn" aria-haspopup="dialog" title="Pick a different day"><svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 8.5h14M7 2.5v4M13 2.5v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span id="todayTitle"></span><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button type="button" class="back-today" id="backToday" hidden>Back to today</button><span id="todayLine"></span></p>
       </div>
       <svg class="mast-logo" viewBox="0 0 1024 1024" role="img" aria-label="Tip Jar logo"><use href="#tj-logo"/></svg>
     </header>
@@ -499,7 +524,8 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
   <!-- GRAPHS -->
   <section class="view" id="view-graphs" role="tabpanel" aria-label="Graphs" hidden>
     <div class="view-head"><div><h2>Graphs</h2><p class="rangeLabel"></p></div><div class="head-ctrls"><div class="incl-slot"></div><div class="ranges" data-ranges></div></div></div>
-    <div class="banner sampleBanner"><span><strong>Sample shifts.</strong> Made-up numbers so you can see how the charts work. Log a real shift and they disappear.</span></div>
+    <div class="banner sampleBanner"><span><strong>Example shifts.</strong> These are made-up numbers to show how Graphs work. They go away when you log your first shift.</span><button type="button" class="btn" data-examples="off">Hide examples</button></div>
+    <div class="panel empty-state" data-emptystate><h2>No shifts yet</h2><p>Your graphs fill in as you log shifts on Home or the Calendar. Want to see what they look like with a few months of shifts?</p><button type="button" class="btn solid" data-examples="on">Show example shifts</button></div>
     <section class="panel">
       <div class="panel-head">
         <h2 id="shiftChartTitle">Every day worked</h2>
@@ -549,7 +575,8 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
   <!-- STATS -->
   <section class="view" id="view-stats" role="tabpanel" aria-label="Stats" hidden>
     <div class="view-head"><div><h2>Stats</h2><p class="rangeLabel"></p></div><div class="head-ctrls"><div class="incl-slot"></div><div class="ranges" data-ranges></div></div></div>
-    <div class="banner sampleBanner"><span><strong>Sample shifts.</strong> Made-up numbers so you can see how stats work. Log a real shift and they disappear.</span></div>
+    <div class="banner sampleBanner"><span><strong>Example shifts.</strong> These are made-up numbers to show how Stats work. They go away when you log your first shift.</span><button type="button" class="btn" data-examples="off">Hide examples</button></div>
+    <div class="panel empty-state" data-emptystate><h2>No shifts yet</h2><p>Your stats fill in as you log shifts on Home or the Calendar. Want to see what they look like with a few months of shifts?</p><button type="button" class="btn solid" data-examples="on">Show example shifts</button></div>
     <section class="tiles" aria-label="Summary">
       <div class="tile"><div class="label">Take-home</div><div class="v" id="k-net">—</div><div class="s" id="k-net-s"></div></div>
       <div class="tile"><div class="label">Avg per day worked</div><div class="v" id="k-avg">—</div><div class="s" id="k-avg-s"></div></div>
@@ -635,6 +662,14 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 
   <p class="store-note" id="storeNote">Connecting to your saved shifts…</p>
 </div>
+<div class="picker" id="picker" role="dialog" aria-modal="true" aria-labelledby="pkTitle" hidden>
+  <div class="pk-card">
+    <div class="pk-head"><h2 id="pkTitle">Pick a day</h2><button type="button" class="pk-x" id="pkClose" aria-label="Close">×</button></div>
+    <div class="cal-nav pk-nav"><button type="button" id="pkPrev" aria-label="Previous month">‹</button><select id="pkMonth" aria-label="Month"></select><select id="pkYear" aria-label="Year"></select><button type="button" id="pkNext" aria-label="Next month">›</button></div>
+    <div class="cal pk-cal" id="pkGrid"></div>
+    <div class="pk-foot"><span class="muted">Shaded days have shifts.</span><button type="button" class="btn" id="pkToday">Today</button></div>
+  </div>
+</div>
 <div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="wTitle1" hidden>
   <div class="w-card">
     <div class="w-dots" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -690,13 +725,14 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
   const short = s => { const d = parseD(s); return MON[d.getMonth()]+' '+d.getDate(); };
   const today = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
   const todayIso = () => iso(today());
+  const t12 = v => { const [h,m] = String(v).split(':').map(Number); return ((h%12)||12) + ':' + pad(m) + (h<12 ? ' AM' : ' PM'); };
   const hm = h => { const t = Math.round(num(h)*60); return Math.floor(t/60) + ':' + pad(t%60); };
   const newId = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
 
   function enrich(s){
     const cc=num(s.cc), cash=num(s.cash), tipshare=num(s.tipshare), hours=num(s.hours), sales=num(s.sales), wage=num(s.wage);
     const total = cc+cash, net = total-tipshare+wage;
-    return { id:s.id, date:s.date, label:s.label||'', notes:typeof s.notes==='string' ? s.notes : '', cc, cash, tipshare, hours, sales, total, wage, net,
+    return { id:s.id, date:s.date, label:s.label||'', notes:typeof s.notes==='string' ? s.notes : '', timeIn:s.timeIn||'', timeOut:s.timeOut||'', cc, cash, tipshare, hours, sales, total, wage, net,
       hourly: hours>0 ? net/hours : null, tipPct: sales>0 ? total/sales : null, n:1 };
   }
   // Combine all shifts on a date into one day
@@ -758,7 +794,9 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 
   const realShifts = () => (real||[]).map(enrich).sort((a,b)=> a.date===b.date ? String(a.id).localeCompare(String(b.id)) : (a.date<b.date?-1:1));
   const usingSample = () => !(real && real.length);
-  const analysisShifts = () => { if(!usingSample()) return realShifts(); if(!sample) sample = makeSample(); return sample.map(enrich); };
+  let showExamples = false;  // example numbers only when the person asks for them
+  const noStats = () => usingSample() && !showExamples;
+  const analysisShifts = () => { if(!usingSample()) return realShifts(); if(!showExamples) return []; if(!sample) sample = makeSample(); return sample.map(enrich); };
   const shiftsOn = date => realShifts().filter(s=>s.date===date);
   const findShift = id => (real||[]).find(s=>s.id===id);
 
@@ -805,11 +843,16 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
     const mount = $(mountId);
     const f = k => prefix + '-' + k;
     mount.innerHTML = `<div class="check">
-      <div class="check-head"><h2>${opts.title}</h2><span class="num" id="${f('sub')}"></span></div>
+      <div class="check-head"><h2 id="${f('title')}">${opts.title}</h2><span class="num" id="${f('sub')}"></span></div>
       <form id="${f('form')}" novalidate>
         ${opts.dateField ? `<div class="row"><label for="${f('date')}">Date</label><input id="${f('date')}" type="date" required></div>` : ''}
         <div class="row" data-field="label"><label for="${f('label')}">Shift<small>optional</small></label><select id="${f('label')}">${LABELS.map(l=>`<option value="${l}">${l||'—'}</option>`).join('')}</select></div>
-        <div class="row"><label for="${f('hh')}">Time worked<small>hours : minutes</small></label><div class="hm"><input id="${f('hh')}" type="number" inputmode="numeric" step="1" min="0" max="24" placeholder="0" aria-label="Hours"><span aria-hidden="true">:</span><input id="${f('mm')}" type="number" inputmode="numeric" step="1" min="0" max="59" placeholder="00" aria-label="Minutes"></div></div>
+        <div class="row time-row">
+          <div class="t-top"><label for="${f('hh')}">Time worked<small id="${f('tsub')}">hours : minutes</small></label>
+            <div class="seg" role="group" aria-label="How to enter your time"><button type="button" data-tmode="hours" aria-pressed="true">Hours</button><button type="button" data-tmode="clock" aria-pressed="false">Clock in/out</button></div></div>
+          <div class="hm" id="${f('hmbox')}"><input id="${f('hh')}" type="number" inputmode="numeric" step="1" min="0" max="24" placeholder="0" aria-label="Hours"><span aria-hidden="true">:</span><input id="${f('mm')}" type="number" inputmode="numeric" step="1" min="0" max="59" placeholder="00" aria-label="Minutes"></div>
+          <div class="clockbox" id="${f('clockbox')}" hidden><label>Clocked in<input id="${f('tin')}" type="time"></label><span aria-hidden="true">→</span><label>Clocked out<input id="${f('tout')}" type="time"></label></div>
+        </div>
         <div class="row" data-field="sales"><label for="${f('sales')}">Sales<small>your total sales</small></label><input id="${f('sales')}" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
         <div class="row" data-field="cc"><label for="${f('cc')}">Credit card tips</label><input id="${f('cc')}" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
         <div class="row" data-field="cash"><label for="${f('cash')}">Cash tips</label><input id="${f('cash')}" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
@@ -828,13 +871,31 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
           <button type="button" class="btn" id="${f('cancel')}">Clear</button>
         </div>
       </form></div>`;
-    const F = {}; ['date','label','hh','mm','sales','cc','cash','tipshare','notes'].forEach(k=>F[k]=$(f(k)));
-    const api = { editingId:null, fixedDate: opts.fixedDate || null };
-    const val = () => ({ date: F.date ? F.date.value : api.fixedDate(), label:F.label.value, hours:+(Math.floor(num(F.hh.value)) + Math.floor(num(F.mm.value))/60).toFixed(4), sales:num(F.sales.value), cc:num(F.cc.value), cash:num(F.cash.value), tipshare:num(F.tipshare.value), notes:F.notes.value.trim() });
+    const F = {}; ['date','label','hh','mm','tin','tout','sales','cc','cash','tipshare','notes'].forEach(k=>F[k]=$(f(k)));
+    const api = { editingId:null, fixedDate: opts.fixedDate || null, tmode:'hours' };
+    // minutes between clock in and clock out; a shift past midnight wraps to the next day
+    const clockMins = () => {
+      if(!F.tin.value || !F.tout.value) return null;
+      const [ah,am] = F.tin.value.split(':').map(Number), [bh,bm] = F.tout.value.split(':').map(Number);
+      let d = (bh*60+bm) - (ah*60+am); if(d < 0) d += 1440; return d;
+    };
+    const hoursFromForm = () => api.tmode==='clock' ? +((clockMins()||0)/60).toFixed(4) : +(Math.floor(num(F.hh.value)) + Math.floor(num(F.mm.value))/60).toFixed(4);
+    api.setTMode = (m, remember) => {
+      if(m==='hours' && api.tmode==='clock'){ const c = clockMins(); if(c){ F.hh.value = Math.floor(c/60); F.mm.value = pad(c%60); } }
+      api.tmode = m;
+      $(f('hmbox')).hidden = m!=='hours'; $(f('clockbox')).hidden = m!=='clock';
+      mount.querySelectorAll('[data-tmode]').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.tmode===m)));
+      if(remember){ prefs.timeMode = m; savePrefs(); }
+      tally();
+    };
+    const val = () => ({ date: F.date ? F.date.value : api.fixedDate(), label:F.label.value, hours:hoursFromForm(), timeIn: api.tmode==='clock' ? F.tin.value : '', timeOut: api.tmode==='clock' ? F.tout.value : '', sales:num(F.sales.value), cc:num(F.cc.value), cash:num(F.cash.value), tipshare:num(F.tipshare.value), notes:F.notes.value.trim() });
     function tally(){
       const e = enrich(val());
       $(f('t-total')).textContent = money(e.total); $(f('t-share')).textContent = '−'+money(e.tipshare);
       $(f('t-net')).textContent = money(e.net); $(f('t-hourly')).textContent = money(e.hourly); $(f('t-pct')).textContent = pct(e.tipPct);
+      if(api.tmode==='clock'){ const c = clockMins(); const over = c!=null && F.tout.value < F.tin.value;
+        $(f('tsub')).textContent = c==null ? 'when you clocked in and out' : '= ' + hm(c/60) + ' worked' + (over ? ', past midnight' : ''); }
+      else $(f('tsub')).textContent = 'hours : minutes';
     }
     function mode(){
       $(f('save')).textContent = api.editingId ? 'Update shift' : 'Save shift';
@@ -849,18 +910,22 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
       F.notes.value = s.notes || '';
       const mins = Math.round(num(s.hours)*60);
       F.hh.value = mins ? Math.floor(mins/60) : ''; F.mm.value = mins ? pad(mins%60) : '';
+      F.tin.value = s.timeIn || ''; F.tout.value = s.timeOut || '';
+      api.setTMode(s.timeIn && s.timeOut ? 'clock' : 'hours');
       $(f('note')).textContent = 'Editing the ' + (s.label ? s.label.toLowerCase()+' ' : '') + 'shift from ' + short(s.date) + '.';
-      shareManual = true; tally(); mode(); F.hh.focus();
+      shareManual = true; tally(); mode(); (api.tmode==='clock' ? F.tin : F.hh).focus();
     };
     api.reset = date => {
       api.editingId = null; shareManual = false;
       if(F.date && date) F.date.value = date;
       F.label.value = opts.defaultLabel ? opts.defaultLabel() : '';
-      ['hh','mm','sales','cc','cash','tipshare','notes'].forEach(k=>F[k].value='');
+      ['hh','mm','tin','tout','sales','cc','cash','tipshare','notes'].forEach(k=>F[k].value='');
+      api.setTMode(prefs.timeMode==='clock' ? 'clock' : 'hours');
       $(f('note')).textContent = ''; tally(); mode();
     };
     api.setDate = date => { if(F.date && !api.editingId) F.date.value = date; };
     Object.values(F).forEach(el=>el && el.addEventListener('input', tally));
+    mount.querySelectorAll('[data-tmode]').forEach(b=>b.addEventListener('click', ()=>api.setTMode(b.dataset.tmode, true)));
     // Automatic tipshare: a percent of sales, until the person types their own amount
     let shareManual = false;
     F.tipshare.addEventListener('input', ()=>{ shareManual = F.tipshare.value !== ''; });
@@ -877,8 +942,13 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
       ev.preventDefault();
       const s = val(); const note = $(f('note'));
       if(!s.date){ note.textContent='Pick the date of the shift.'; F.date && F.date.focus(); return; }
-      if(num(F.mm.value) >= 60){ note.textContent='Minutes go from 0 to 59. For 90 minutes, enter 1 hour 30 minutes.'; F.mm.focus(); return; }
-      if(!(s.hours>0)){ note.textContent='Enter how long you worked so the hourly rate is right.'; F.hh.focus(); return; }
+      if(api.tmode==='clock'){
+        if(!F.tin.value || !F.tout.value){ note.textContent='Enter the times you clocked in and out.'; (F.tin.value ? F.tout : F.tin).focus(); return; }
+        if(!(s.hours>0)){ note.textContent='Clock in and clock out are the same time. Check the times.'; F.tout.focus(); return; }
+      } else {
+        if(num(F.mm.value) >= 60){ note.textContent='Minutes go from 0 to 59. For 90 minutes, enter 1 hour 30 minutes.'; F.mm.focus(); return; }
+        if(!(s.hours>0)){ note.textContent='Enter how long you worked so the hourly rate is right.'; F.hh.focus(); return; }
+      }
       if(!store){ note.textContent='Still connecting to your saved shifts. Try again in a moment.'; return; }
       const id = api.editingId || newId(); const was = api.editingId;
       $(f('save')).disabled = true;
@@ -894,7 +964,8 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
     return api;
   }
 
-  const homeForm = ShiftForm('homeForm','h',{ title:'Tonight\'s check', fixedDate: todayIso });
+  let homeDate = todayIso();  // the day Home is showing; today unless picked from the date button
+  const homeForm = ShiftForm('homeForm','h',{ title:'Tonight\'s check', fixedDate: ()=>homeDate });
   const calForm = ShiftForm('calForm','c',{ title:'Shift check', dateField:true,
     onDate: d => { calSel = d; const x = parseD(d); calMonth = new Date(x.getFullYear(), x.getMonth(), 1); render(); },
     onSaved: d => { calSel = d; } });
@@ -908,7 +979,7 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
     const day = summarize(list);
     mount.innerHTML = '<div class="daylist">' + list.map((s,i)=>`<div class="shift">
         <div class="name">${esc(s.label || ('Shift '+(i+1)))}</div><div class="net">${money(s.net)}</div>
-        <div class="meta"><span>${hm(s.hours)} worked</span><span>${money(s.hourly)}/hr</span><span>Card ${money(s.cc)}</span><span>Cash ${money(s.cash)}</span><span>Tipshare ${money(s.tipshare)}</span>${s.sales?`<span>Sales ${money(s.sales)} · ${pct(s.tipPct)}</span>`:''}</div>
+        <div class="meta">${s.timeIn&&s.timeOut?`<span>${t12(s.timeIn)} – ${t12(s.timeOut)}</span>`:''}<span>${hm(s.hours)} worked</span><span>${money(s.hourly)}/hr</span><span>Card ${money(s.cc)}</span><span>Cash ${money(s.cash)}</span><span>Tipshare ${money(s.tipshare)}</span>${s.sales?`<span>Sales ${money(s.sales)} · ${pct(s.tipPct)}</span>`:''}</div>
         ${s.notes?`<div class="snote">${esc(s.notes)}</div>`:''}
         <div class="acts"><button type="button" class="link" data-edit="${esc(s.id)}">Edit</button><button type="button" class="link danger" data-del="${esc(s.id)}">${pendingDelete===s.id?'Tap again to delete':'Delete'}</button></div>
       </div>`).join('') + '</div>' +
@@ -940,7 +1011,7 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
     window.scrollTo(0,0);
   }
   document.querySelector('.tabs').addEventListener('click', e=>{ const b = e.target.closest('[data-tab]'); if(b) showTab(b.dataset.tab, true); });
-  window.addEventListener('popstate', e=>{ if(!$('welcome').hidden) return; showTab((e.state && e.state.tab) || location.hash.slice(1) || 'home'); });
+  window.addEventListener('popstate', e=>{ if(!$('welcome').hidden) return; if(!$('picker').hidden){ $('picker').hidden = true; } showTab((e.state && e.state.tab) || location.hash.slice(1) || 'home'); });
 
   // ---------- render ----------
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -949,7 +1020,9 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
   function chartBase(){ Chart.defaults.font.family = css('--f-body') || 'system-ui'; Chart.defaults.font.size = 12; Chart.defaults.color = css('--muted'); Chart.defaults.borderColor = css('--line'); }
 
   function render(){
-    document.querySelectorAll('.sampleBanner').forEach(b=>b.hidden = !usingSample());
+    document.querySelectorAll('.sampleBanner').forEach(b=>b.hidden = !(usingSample() && showExamples));
+    document.querySelectorAll('[data-emptystate]').forEach(b=>b.hidden = !noStats());
+    document.querySelectorAll('#view-stats > section, #view-graphs > section, #view-graphs > .two, #view-stats .head-ctrls, #view-graphs .head-ctrls, #view-stats .rangeLabel, #view-graphs .rangeLabel').forEach(el=>el.hidden = noStats());
     document.querySelectorAll('[data-range]').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.range===range)));
     const wagesOn = !!wageMap();
     document.querySelectorAll('.rangeLabel').forEach(p=>p.textContent = rangeName() + (wagesOn ? ' · tips plus paychecks' : ''));
@@ -963,20 +1036,26 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
     if(tab==='paychecks') renderPaychecks();
     if(tab==='home') renderHome();
     if(tab==='calendar') renderCalendar();
-    if(tab==='graphs' && window.Chart){ chartBase(); renderGraphs(); }
-    if(tab==='stats') renderStats();
+    if(tab==='graphs' && window.Chart && !noStats()){ chartBase(); renderGraphs(); }
+    if(tab==='stats' && !noStats()) renderStats();
     if(tab==='donate') renderDonate();
   }
 
+  document.addEventListener('click', e=>{ const b = e.target.closest('[data-examples]'); if(!b) return; showExamples = b.dataset.examples==='on'; render(); });
+
   function renderHome(){
-    const t = todayIso();
-    $('todayTitle').textContent = long(t);
+    const t = homeDate, isToday = t === todayIso();
+    const thisYear = t.slice(0,4) === todayIso().slice(0,4);
+    $('todayTitle').textContent = thisYear ? long(t) : nice(t);
+    $('backToday').hidden = isToday;
+    $('h-title').textContent = isToday ? 'Tonight\'s check' : 'Shift check';
+    $('todayListTitle').textContent = isToday ? 'Today\'s shifts' : 'Shifts on ' + (thisYear ? nice(t).replace(/, \d{4}$/,'') : nice(t));
     const list = dayList('todayList', t, homeForm);
     $('todayCount').textContent = list.length ? list.length + ' shift' + (list.length===1?'':'s') : '';
-    $('todayLine').textContent = list.length ? money(summarize(list).net) + ' take-home so far today' : 'No shifts logged yet today';
+    $('todayLine').textContent = list.length ? money(summarize(list).net) + (isToday ? ' take-home so far today' : ' take-home that day') : (isToday ? 'No shifts logged yet today' : 'No shifts logged that day');
     renderPast(t, list.length ? summarize(list) : null);
     $('homeFootNote').textContent = dataLine();
-    renderGoals(t, list);
+    const tt = todayIso(); renderGoals(tt, shiftsOn(tt));
     renderReminder();
     renderRate();
   }
@@ -1330,7 +1409,41 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 
   // roll Home over to the new day if the page stays open past midnight
   let lastDay = todayIso();
-  setInterval(()=>{ const t = todayIso(); if(t!==lastDay){ lastDay=t; if(!homeForm.editingId) homeForm.reset(); render(); } }, 60000);
+  setInterval(()=>{ const t = todayIso(); if(t!==lastDay){ const was = lastDay; lastDay=t; if(homeDate===was){ homeDate = t; if(!homeForm.editingId) homeForm.reset(); } render(); } }, 60000);
+
+  // ---------- pop-up calendar on Home ----------
+  let pkMonth = null;
+  function setHomeDate(d){ homeDate = d; pendingDelete = null; homeForm.reset(); render(); }
+  function drawPicker(){
+    const y = pkMonth.getFullYear(), m = pkMonth.getMonth(), nowY = today().getFullYear();
+    const days = new Map(byDay(realShifts()).map(d=>[d.date,d]));
+    let firstY = nowY - 10; days.forEach((_,k)=>{ firstY = Math.min(firstY, +k.slice(0,4)); }); firstY = Math.min(firstY, y);
+    const lastY = Math.max(nowY + 1, y);
+    let yo = ''; for(let yy=lastY; yy>=firstY; yy--) yo += `<option value="${yy}"${yy===y?' selected':''}>${yy}</option>`;
+    $('pkYear').innerHTML = yo;
+    $('pkMonth').innerHTML = MONL.map((n,i)=>`<option value="${i}"${i===m?' selected':''}>${n}</option>`).join('');
+    const lead = new Date(y,m,1).getDay(), count = new Date(y,m+1,0).getDate(), t = todayIso();
+    let html = DOW.map(d=>`<div class="dow">${d.slice(0,2)}</div>`).join('');
+    for(let i=0;i<lead;i++) html += '<div class="day out" aria-hidden="true"></div>';
+    for(let d=1; d<=count; d++){
+      const key = y+'-'+pad(m+1)+'-'+pad(d), rec = days.get(key);
+      html += `<button type="button" class="day${rec?' worked':''}${key===t?' today':''}" data-pday="${key}" aria-pressed="${key===homeDate}" style="--heat:${rec?30:0}" aria-label="${nice(key)}${rec?', '+money(rec.net)+' take-home':''}"><span class="d">${d}</span><span class="amt">${rec?money(rec.net,0):''}</span></button>`;
+    }
+    $('pkGrid').innerHTML = html;
+  }
+  function openPicker(){ const d = parseD(homeDate); pkMonth = new Date(d.getFullYear(), d.getMonth(), 1); drawPicker(); $('picker').hidden = false; $('pkMonth').focus(); }
+  function closePicker(){ $('picker').hidden = true; $('dateBtn').focus(); }
+  $('dateBtn').addEventListener('click', openPicker);
+  $('backToday').addEventListener('click', ()=>setHomeDate(todayIso()));
+  $('pkClose').addEventListener('click', closePicker);
+  $('picker').addEventListener('click', e=>{ if(e.target.id==='picker') closePicker(); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !$('picker').hidden) closePicker(); });
+  $('pkPrev').addEventListener('click', ()=>{ pkMonth = new Date(pkMonth.getFullYear(), pkMonth.getMonth()-1, 1); drawPicker(); });
+  $('pkNext').addEventListener('click', ()=>{ pkMonth = new Date(pkMonth.getFullYear(), pkMonth.getMonth()+1, 1); drawPicker(); });
+  const pkPick = () => { pkMonth = new Date(+$('pkYear').value, +$('pkMonth').value, 1); drawPicker(); };
+  $('pkMonth').addEventListener('change', pkPick); $('pkYear').addEventListener('change', pkPick);
+  $('pkToday').addEventListener('click', ()=>{ $('picker').hidden = true; setHomeDate(todayIso()); });
+  $('pkGrid').addEventListener('click', e=>{ const b = e.target.closest('[data-pday]'); if(!b) return; $('picker').hidden = true; setHomeDate(b.dataset.pday); window.scrollTo(0,0); });
 
   // ---------- storage: this device only ----------
   const K = { shifts:'tipbook.shifts.v2', checks:'tipbook.checks', incl:'tipbook.includeChecks', prefs:'tipjar.prefs', lastBackup:'tipjar.lastBackup', since:'tipjar.since' };
@@ -1363,6 +1476,7 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
     if(!prefs.hideFields || typeof prefs.hideFields!=='object') prefs.hideFields = {};
     if((real.length || checks.length) && !lsGet(K.since)) lsSet(K.since, new Date().toISOString());
     applyTheme(); applyFields();
+    [homeForm, calForm].forEach(fm=>{ if(fm && !fm.editingId) fm.setTMode(prefs.timeMode==='clock' ? 'clock' : 'hours'); });
   }
   const savePrefs = () => lsSet(K.prefs, JSON.stringify(prefs));
   store = {
