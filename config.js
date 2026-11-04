@@ -14,6 +14,8 @@ window.TIPJAR_CONFIG = {
 
   // The "Tip the Jar" page. Names only, without @ or $.
   tips: {
+    heading: "Thanks for using Tip Jar!",
+    message: "Every tip-tracking app we've used either cost money, had premium member benefits, or were chock-full of ads. We were sick of it and built an app that will always be 100% free to use. If you would like to support our team, using our app is thanks enough, but if you'd like to do more, a tip is always appreciated! We hope you have a great shift! Thank you!",
     venmo: 'TipTheJar',
     cashapp: 'TipJarApp',
     paypal: ''          // not used
