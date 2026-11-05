@@ -140,6 +140,12 @@ label.btn{display:inline-flex;align-items:center;cursor:pointer}
 .empty-state{display:grid;gap:10px;justify-items:start;padding:22px}
 .empty-state p{margin:0;color:var(--muted);max-width:56ch}
 .sampleBanner{justify-content:space-between}
+@keyframes tjSlideL{from{transform:translateX(36px);opacity:.35}to{transform:none;opacity:1}}
+@keyframes tjSlideR{from{transform:translateX(-36px);opacity:.35}to{transform:none;opacity:1}}
+.view.slide-left{animation:tjSlideL .22s ease-out}
+.view.slide-right{animation:tjSlideR .22s ease-out}
+.wrap{overflow-x:clip}
+.pk-card:focus{outline:none}
 .warn{color:var(--ink)}
 .warn strong{color:var(--neg)}
 .set-label{font-weight:600;font-size:.9rem;margin-bottom:6px}
@@ -663,7 +669,7 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
   <p class="store-note" id="storeNote">Connecting to your saved shifts…</p>
 </div>
 <div class="picker" id="picker" role="dialog" aria-modal="true" aria-labelledby="pkTitle" hidden>
-  <div class="pk-card">
+  <div class="pk-card" id="pkCard" tabindex="-1">
     <div class="pk-head"><h2 id="pkTitle">Pick a day</h2><button type="button" class="pk-x" id="pkClose" aria-label="Close">×</button></div>
     <div class="cal-nav pk-nav"><button type="button" id="pkPrev" aria-label="Previous month">‹</button><select id="pkMonth" aria-label="Month"></select><select id="pkYear" aria-label="Year"></select><button type="button" id="pkNext" aria-label="Next month">›</button></div>
     <div class="cal pk-cal" id="pkGrid"></div>
@@ -677,6 +683,7 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
       <svg class="w-logo" viewBox="0 0 1024 1024" role="img" aria-label="Tip Jar logo"><use href="#tj-logo"/></svg>
       <h2 id="wTitle1">Welcome to Tip Jar</h2>
       <p>Log each shift in seconds and see what you really make: take-home, hourly rate, your best nights, and how this year compares to last.</p>
+      <p class="muted">Tip: swipe left or right anywhere on the screen to move between tabs.</p>
     </section>
     <section class="w-step" data-step="2" hidden>
       <div class="w-icon" aria-hidden="true"><svg viewBox="0 0 48 48" width="56" height="56"><rect x="12" y="4" width="24" height="40" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><path d="M19 24l4 4 7-8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -1001,17 +1008,55 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 
   // ---------- tabs ----------
   const TABS = ['home','graphs','calendar','stats','paychecks','donate','setup'];
-  function showTab(t, push){
+  function showTab(t, push, dir){
     if(!TABS.includes(t) || prefs.hidden[t]) t = 'home';
     tab = t; pendingDelete = null;
     document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.setAttribute('aria-selected', String(b.dataset.tab===t)));
     TABS.forEach(k=>$('view-'+k).hidden = k!==t);
+    // scroll the tab bar so the current tab is in view (tabs overflow on phones)
+    const tb = document.querySelector('.tabs [data-tab="' + t + '"]');
+    if(tb){ const bar = tb.parentElement, br = bar.getBoundingClientRect(), bb = tb.getBoundingClientRect();
+      try{ bar.scrollTo({ left: bar.scrollLeft + (bb.left - br.left) - (br.width - bb.width)/2, behavior:'smooth' }); }catch(e){ bar.scrollLeft += (bb.left - br.left) - (br.width - bb.width)/2; } }
+    if(dir){ const v = $('view-'+t); v.classList.remove('slide-left','slide-right'); void v.offsetWidth; v.classList.add(dir==='left' ? 'slide-left' : 'slide-right'); }
     if(push && !(history.state && history.state.tab===t)){ try{ history.pushState({ tab:t }, '', t==='home' ? location.pathname + location.search : '#'+t); }catch(e){} }
     render();
     window.scrollTo(0,0);
   }
   document.querySelector('.tabs').addEventListener('click', e=>{ const b = e.target.closest('[data-tab]'); if(b) showTab(b.dataset.tab, true); });
   window.addEventListener('popstate', e=>{ if(!$('welcome').hidden) return; if(!$('picker').hidden){ $('picker').hidden = true; } showTab((e.state && e.state.tab) || location.hash.slice(1) || 'home'); });
+
+  // ---------- swipe left / right anywhere to move between tabs ----------
+  (function(){
+    let sx = 0, sy = 0, st = 0, track = false;
+    const EDGE = 24;  // leave the screen edges to the phone's own back gesture
+    const blocked = el => {
+      const w = $('welcome');
+      if(!$('picker').hidden || (w && !w.hidden)) return true;
+      for(let n = el; n && n !== document.body; n = n.parentElement){
+        if(n.matches && n.matches('input, textarea, select, canvas, [contenteditable]')) return true;
+        if(n.scrollWidth > n.clientWidth + 2){ const ox = getComputedStyle(n).overflowX; if(ox==='auto' || ox==='scroll') return true; }
+      }
+      return false;
+    };
+    document.addEventListener('touchstart', e=>{
+      if(e.touches.length !== 1){ track = false; return; }
+      const t = e.touches[0];
+      track = t.clientX > EDGE && t.clientX < window.innerWidth - EDGE && !blocked(e.target);
+      sx = t.clientX; sy = t.clientY; st = Date.now();
+    }, { passive:true });
+    document.addEventListener('touchmove', e=>{ if(track && e.touches.length !== 1) track = false; }, { passive:true });
+    document.addEventListener('touchend', e=>{
+      if(!track) return; track = false;
+      const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      if(Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.8 || Date.now() - st > 700) return;
+      if(window.getSelection && String(window.getSelection()).length) return;
+      const order = [...document.querySelectorAll('.tabs [data-tab]')].filter(b=>!b.hidden).map(b=>b.dataset.tab);
+      const i = order.indexOf(tab); if(i < 0) return;
+      const j = dx < 0 ? i + 1 : i - 1;
+      if(j < 0 || j >= order.length) return;
+      showTab(order[j], true, dx < 0 ? 'left' : 'right');
+    }, { passive:true });
+  })();
 
   // ---------- render ----------
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -1431,7 +1476,7 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
     }
     $('pkGrid').innerHTML = html;
   }
-  function openPicker(){ const d = parseD(homeDate); pkMonth = new Date(d.getFullYear(), d.getMonth(), 1); drawPicker(); $('picker').hidden = false; $('pkMonth').focus(); }
+  function openPicker(){ const d = parseD(homeDate); pkMonth = new Date(d.getFullYear(), d.getMonth(), 1); drawPicker(); $('picker').hidden = false; $('pkCard').focus({ preventScroll:true }); }
   function closePicker(){ $('picker').hidden = true; $('dateBtn').focus(); }
   $('dateBtn').addEventListener('click', openPicker);
   $('backToday').addEventListener('click', ()=>setHomeDate(todayIso()));
