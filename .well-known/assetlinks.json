@@ -1,0 +1,13 @@
+json
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.tipjartiptracker.twa",
+      "sha256_cert_fingerprints": [
+        "87:97:37:F6:E3:04:07:F0:B0:28:DE:D7:59:FB:F8:EC:83:84:24:37:10:0F:8E:1A:6F:DE:EB:0C:0B:05:91:88"
+      ]
+    }
+  }
+]
