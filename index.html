@@ -140,11 +140,13 @@ label.btn{display:inline-flex;align-items:center;cursor:pointer}
 .empty-state{display:grid;gap:10px;justify-items:start;padding:22px}
 .empty-state p{margin:0;color:var(--muted);max-width:56ch}
 .sampleBanner{justify-content:space-between}
-@keyframes tjSlideL{from{transform:translateX(36px);opacity:.35}to{transform:none;opacity:1}}
-@keyframes tjSlideR{from{transform:translateX(-36px);opacity:.35}to{transform:none;opacity:1}}
-.view.slide-left{animation:tjSlideL .22s ease-out}
-.view.slide-right{animation:tjSlideR .22s ease-out}
-.wrap{overflow-x:clip}
+@keyframes tjSlideL{from{transform:translateX(45%);opacity:.3}to{transform:none;opacity:1}}
+@keyframes tjSlideR{from{transform:translateX(-45%);opacity:.3}to{transform:none;opacity:1}}
+.view.slide-left{animation:tjSlideL .26s cubic-bezier(.2,.8,.2,1)}
+.view.slide-right{animation:tjSlideR .26s cubic-bezier(.2,.8,.2,1)}
+.wrap{overflow-x:clip;touch-action:pan-y pinch-zoom}
+.table-wrap,.tabs,.hist{touch-action:pan-x pan-y pinch-zoom}
+.view{will-change:transform}
 .pk-card:focus{outline:none}
 .warn{color:var(--ink)}
 .warn strong{color:var(--neg)}
@@ -1026,36 +1028,70 @@ td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
   window.addEventListener('popstate', e=>{ if(!$('welcome').hidden) return; if(!$('picker').hidden){ $('picker').hidden = true; } showTab((e.state && e.state.tab) || location.hash.slice(1) || 'home'); });
 
   // ---------- swipe left / right anywhere to move between tabs ----------
+  // The page follows your finger; let go past ~28% of the screen (or flick) to change tabs.
   (function(){
-    let sx = 0, sy = 0, st = 0, track = false;
     const EDGE = 24;  // leave the screen edges to the phone's own back gesture
+    const reduce = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let sx = 0, sy = 0, st = 0, mode = 'off', view = null, dx = 0, lastX = 0, lastT = 0, vel = 0, justSwiped = 0;
     const blocked = el => {
       const w = $('welcome');
       if(!$('picker').hidden || (w && !w.hidden)) return true;
       for(let n = el; n && n !== document.body; n = n.parentElement){
-        if(n.matches && n.matches('input, textarea, select, canvas, [contenteditable]')) return true;
+        if(n.matches && n.matches('canvas, [contenteditable]')) return true;
         if(n.scrollWidth > n.clientWidth + 2){ const ox = getComputedStyle(n).overflowX; if(ox==='auto' || ox==='scroll') return true; }
       }
       return false;
     };
+    const order = () => [...document.querySelectorAll('.tabs [data-tab]')].filter(b=>!b.hidden).map(b=>b.dataset.tab);
+    const neighbor = d => { const o = order(), i = o.indexOf(tab); if(i < 0) return null; const j = d < 0 ? i + 1 : i - 1; return (j >= 0 && j < o.length) ? o[j] : null; };
+    const setPos = (x, animate) => {
+      if(!view) return;
+      view.style.transition = animate ? 'transform .2s cubic-bezier(.2,.8,.2,1), opacity .2s' : 'none';
+      view.style.transform = x ? 'translateX(' + x + 'px)' : '';
+      view.style.opacity = x ? String(1 - Math.min(Math.abs(x) / window.innerWidth, 1) * 0.4) : '';
+    };
+    const clear = v => { if(v){ v.style.transition = ''; v.style.transform = ''; v.style.opacity = ''; } };
+
     document.addEventListener('touchstart', e=>{
-      if(e.touches.length !== 1){ track = false; return; }
+      if(e.touches.length !== 1){ mode = 'off'; return; }
       const t = e.touches[0];
-      track = t.clientX > EDGE && t.clientX < window.innerWidth - EDGE && !blocked(e.target);
-      sx = t.clientX; sy = t.clientY; st = Date.now();
+      mode = (t.clientX > EDGE && t.clientX < window.innerWidth - EDGE && !blocked(e.target)) ? 'wait' : 'off';
+      sx = lastX = t.clientX; sy = t.clientY; st = lastT = Date.now(); dx = 0; vel = 0;
+      view = $('view-' + tab);
     }, { passive:true });
-    document.addEventListener('touchmove', e=>{ if(track && e.touches.length !== 1) track = false; }, { passive:true });
-    document.addEventListener('touchend', e=>{
-      if(!track) return; track = false;
-      const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
-      if(Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.8 || Date.now() - st > 700) return;
-      if(window.getSelection && String(window.getSelection()).length) return;
-      const order = [...document.querySelectorAll('.tabs [data-tab]')].filter(b=>!b.hidden).map(b=>b.dataset.tab);
-      const i = order.indexOf(tab); if(i < 0) return;
-      const j = dx < 0 ? i + 1 : i - 1;
-      if(j < 0 || j >= order.length) return;
-      showTab(order[j], true, dx < 0 ? 'left' : 'right');
-    }, { passive:true });
+
+    document.addEventListener('touchmove', e=>{
+      if(mode === 'off' || mode === 'v') return;
+      if(e.touches.length !== 1){ if(mode === 'h') setPos(0, true); mode = 'off'; return; }
+      const t = e.touches[0], mx = t.clientX - sx, my = t.clientY - sy;
+      if(mode === 'wait'){
+        if(Math.abs(mx) < 10 && Math.abs(my) < 10) return;
+        mode = Math.abs(mx) > Math.abs(my) * 1.2 ? 'h' : 'v';
+        if(mode !== 'h') return;
+      }
+      e.preventDefault();  // we're dragging sideways; don't scroll the page
+      const now = Date.now(); if(now > lastT){ vel = (t.clientX - lastX) / (now - lastT); } lastX = t.clientX; lastT = now;
+      dx = mx;
+      const room = neighbor(dx) ? dx : dx * 0.25;  // stretchy resistance at the first and last tab
+      if(!reduce()) setPos(room, false);
+    }, { passive:false });
+
+    const finish = () => {
+      if(mode !== 'h'){ mode = 'off'; return; }
+      mode = 'off';
+      const W = window.innerWidth, next = neighbor(dx);
+      const go = next && (Math.abs(dx) > W * 0.28 || (Math.abs(dx) > 40 && Math.abs(vel) > 0.45 && Math.sign(vel) === Math.sign(dx)));
+      justSwiped = Date.now();
+      if(!go){ if(!reduce()) setPos(0, true); setTimeout(()=>clear(view), 220); return; }
+      const leaving = view, dir = dx < 0 ? 'left' : 'right';
+      if(reduce()){ clear(leaving); showTab(next, true, null); return; }
+      setPos(dx < 0 ? -W : W, true);
+      setTimeout(()=>{ clear(leaving); showTab(next, true, dir); }, 170);
+    };
+    document.addEventListener('touchend', finish, { passive:true });
+    document.addEventListener('touchcancel', ()=>{ if(mode === 'h'){ setPos(0, true); setTimeout(()=>clear(view), 220); } mode = 'off'; }, { passive:true });
+    // a drag that started on a button shouldn't also press it
+    document.addEventListener('click', e=>{ if(Date.now() - justSwiped < 350){ e.preventDefault(); e.stopPropagation(); } }, true);
   })();
 
   // ---------- render ----------
